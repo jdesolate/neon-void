@@ -14,6 +14,9 @@ export const ui = {
   music: $('musicBtn'), sfxBtn: $('sfxBtn'), pause: $('pause'), pauseBtn: $('pauseBtn'), resume: $('resumeBtn'),
   gold: $('gold'), walletLine: $('walletLine'),
   shop: $('shop'), shopBtn: $('shopBtn'), shopClose: $('shopClose'), shopItems: $('shopItems'), shopWallet: $('shopWallet'),
+  reroll: $('rerollBtn'), banish: $('banishBtn'), luHint: $('luHint'),
+  ach: $('ach'), achBtn: $('achBtn'), achClose: $('achClose'), achItems: $('achItems'),
+  pilots: $('pilots'), toasts: $('toasts'),
 };
 
 export function showBestLine() {

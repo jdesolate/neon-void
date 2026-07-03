@@ -7,7 +7,7 @@ export const BALANCE = {
   xp: { base: 4, perLevel: 3, pow: 1.5 },
   // innate growth per player level: linear from base, never compounding
   innate: { dmgPerLevel: 0.015, aspdPerLevel: 0.02 },
-  levelup: { modalCooldown: 4 },
+  levelup: { modalCooldown: 4, rerolls: 1, banishes: 1 },
   combo: { maxStack: 50, multPer: 0.02 },
   spawn: {
     firstDelay: 0.5, baseInterval: 1.1, minInterval: 0.13, cap: 230,
@@ -45,10 +45,24 @@ export const BALANCE = {
     firstChaseT: 1.6, chaseT: 1.5, teleT: 0.85, dashT: 0.5, dashSpd: 900, dashReach: 38, recoverT: 0.9, recoverSpdMul: 0.5,
     shockR: 180, shockDmgMul: 1.0, killHeal: 40, gemCount: 26, gemValue: 9, gemRingMin: 40, gemRingMax: 130,
   },
+  // Playable characters: stat multipliers over the base player block; the starting
+  // weapon id lives in the content rows. startLv moved here from weapons.bolt.
+  characters: {
+    striker: { spdMul: 1, hpMul: 1, startLv: 1 },
+    vanguard: { spdMul: 1.2, hpMul: 0.8, startLv: 1 },
+  },
+  // Achievement goals, keyed by row id (rows live in content/achievements.js).
+  achievements: {
+    goals: {
+      recruit: 100, slayer: 1000, exterminator: 10000, survivor: 600,
+      ascended: 1, bossbreaker: 10, titanfall: 3, voidslayer: 1,
+      hotstreak: 50, tycoon: 1000, headhunter: 10,
+    },
+  },
   weapons: {
     maxLv: 5,
     bolt: {
-      startLv: 1, startT: 0.4, baseInterval: 0.45, intervalPerLv: 0.024, minInterval: 0.18,
+      startT: 0.4, baseInterval: 0.45, intervalPerLv: 0.024, minInterval: 0.18,
       baseDmg: 7, dmgPerLv: 3, speed: 520, spread: 0.14, life: 1.7, range: 900,
       homingLv: 4, homingRange: 420, homingTurn: 6, retryT: 0.12,
     },

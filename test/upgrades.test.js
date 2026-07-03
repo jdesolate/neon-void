@@ -34,6 +34,20 @@ test('small pools degrade gracefully', () => {
   assert.equal(def.length, 3);
 });
 
+test('a banished id filtered from the pool never appears in an offer', () => {
+  const rng = createRng(11);
+  for (const banished of ['power', 'vital']) {
+    const pool = fullPool().filter(u => u.id !== banished);
+    for (let i = 0; i < 300; i++) {
+      const picks = rollUpgrades(pool, rng);
+      assert.equal(picks.length, 3);
+      assert.ok(!picks.some(u => u.id === banished), banished + ' leaked back into offer ' + i);
+      // the offensive guarantee survives banishing an offensive card
+      assert.ok(picks.some(u => OFFENSIVE.has(u.id)));
+    }
+  }
+});
+
 test('overcharge and wisdom stack additively, never compounding', () => {
   const U = BALANCE.upgrades;
   const power = UPS.find(u => u.id === 'power'), wisdom = UPS.find(u => u.id === 'wisdom');

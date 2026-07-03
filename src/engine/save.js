@@ -1,9 +1,10 @@
 // Versioned save behind a storage adapter. One key, JSON blob, migration chain on load.
 // v1 was two raw localStorage keys (nv_bestT / nv_bestK); v2 is { v: 2, best: { time, kills } };
 // v3 adds { settings: { music } } for the audio toggle; v4 adds { gold, shop } for the meta
-// economy; v5 adds { settings: { sfx } } for the SFX toggle.
+// economy; v5 adds { settings: { sfx } } for the SFX toggle; v6 adds { ach, life, character }
+// for achievements, lifetime counters, and the selected character.
 export const SAVE_KEY = 'nv_save';
-export const SCHEMA_VERSION = 5;
+export const SCHEMA_VERSION = 6;
 const LEGACY_KEYS = { time: 'nv_bestT', kills: 'nv_bestK' };
 
 export function localStorageAdapter() {
@@ -18,8 +19,13 @@ export function defaultSettings() {
   return { music: true, sfx: true };
 }
 
+export function defaultLife() {
+  return { kills: 0, bosses: 0, titans: 0, reapers: 0, elites: 0, evolutions: 0, gold: 0, combo: 0 };
+}
+
 export function defaultSave() {
-  return { v: SCHEMA_VERSION, best: { time: 0, kills: 0 }, settings: defaultSettings(), gold: 0, shop: {} };
+  return { v: SCHEMA_VERSION, best: { time: 0, kills: 0 }, settings: defaultSettings(), gold: 0, shop: {},
+    ach: {}, life: defaultLife(), character: 'striker' };
 }
 
 function num(v) { const n = +v; return Number.isFinite(n) && n > 0 ? n : 0; }
@@ -36,6 +42,9 @@ const MIGRATIONS = {
   3(data) { return { v: 4, best: data.best, settings: data.settings, gold: 0, shop: {} }; },
   // v4 -> v5: introduce the SFX toggle, on by default. Additive, never wipes bests.
   4(data) { return { v: 5, best: data.best, settings: Object.assign({}, data.settings, { sfx: true }), gold: data.gold, shop: data.shop }; },
+  // v5 -> v6: introduce achievements, lifetime counters, and the character pick. Additive, never wipes bests.
+  5(data) { return { v: 6, best: data.best, settings: data.settings, gold: data.gold, shop: data.shop,
+    ach: {}, life: defaultLife(), character: 'striker' }; },
 };
 
 function migrateChain(data) {
@@ -71,6 +80,20 @@ function load(adapter) {
             }
           }
           migrated.shop = shop;
+          const ach = {};
+          if (migrated.ach && typeof migrated.ach === 'object') {
+            for (const k of Object.keys(migrated.ach)) if (migrated.ach[k]) ach[k] = 1;
+          }
+          migrated.ach = ach;
+          const life = defaultLife();
+          if (migrated.life && typeof migrated.life === 'object') {
+            for (const k of Object.keys(life)) {
+              const n = Math.floor(+migrated.life[k]);
+              if (Number.isFinite(n) && n > 0) life[k] = n;
+            }
+          }
+          migrated.life = life;
+          if (typeof migrated.character !== 'string' || !migrated.character) migrated.character = 'striker';
           return migrated;
         }
       }

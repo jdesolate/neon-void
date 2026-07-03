@@ -43,6 +43,7 @@ export const sfx = {
   hurt() { tone(200, 50, .26, 'sawtooth', .22); },
   over() { [392, 311, 247, 196].forEach((f, i) => tone(f, f * .94, .3, 'triangle', .18, i * .2)); },
   newbest() { [523, 659, 1046].forEach((f, i) => tone(f, f, .16, 'sine', .18, .9 + i * .09)); },
+  achieve() { [659, 880, 1319].forEach((f, i) => tone(f, f, .15, 'sine', .16, i * .09)); tone(1760, 2637, .22, 'triangle', .06, .3); },
   tick() { tone(1200, 900, .05, 'square', .05); },
   chest() { tone(240, 480, .35, 'sine', .12); tone(120, 240, .35, 'triangle', .08, .05); },
   evolve() { [392, 523, 659, 784, 1046].forEach((f, i) => tone(f, f, .2, 'sine', .17, i * .09)); tone(70, 300, .7, 'sawtooth', .16, .45); },

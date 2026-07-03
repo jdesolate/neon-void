@@ -24,9 +24,14 @@ export function gainXP(v) {
   openLevelUp();
 }
 
+// Live upgrade pool: capped cards excluded by their gates, banished ids gone for the run.
+function livePool() {
+  return UPS.filter(function (u) { return u.can() && S.game.banished.indexOf(u.id) === -1; });
+}
+
 function autoPick() {
   const game = S.game;
-  const pool = UPS.filter(function (u) { return u.can(); });
+  const pool = livePool();
   game.pendingLv--;
   if (pool.length === 0) return;
   const u = pool[S.rng.int(pool.length)];
@@ -46,15 +51,17 @@ export function openLevelUp() {
   S.state = 'level'; S.tsT = BALANCE.time.levelSlow;
   S.game.lvModalAt = S.game.time;
   S.player.inv = 9999;
+  banishArmed = false;
   confetti(S.player.x, S.player.y);
   sfx.level();
   buildCards();
+  syncLuBtns();
   ui.levelup.classList.remove('hidden');
   bus.emit('level-up-opened', { level: S.game.level, choices: choices.map(c => c.id) });
 }
 
 function buildCards() {
-  choices = rollUpgrades(UPS.filter(function (u) { return u.can(); }), S.rng);
+  choices = rollUpgrades(livePool(), S.rng);
   ui.cards.innerHTML = '';
   choices.forEach(function (u, i) {
     const btn = document.createElement('button');
@@ -75,8 +82,54 @@ function buildCards() {
   });
 }
 
+/* ---------- reroll / banish (1 each per run) ---------- */
+let banishArmed = false;
+
+function syncLuBtns() {
+  ui.reroll.textContent = '⟳ REROLL ×' + S.game.rerolls;
+  ui.reroll.disabled = S.game.rerolls <= 0;
+  ui.banish.textContent = banishArmed ? '✕ PICK A CARD' : '✕ BANISH ×' + S.game.banishes;
+  ui.banish.disabled = S.game.banishes <= 0;
+  ui.banish.classList.toggle('armed', banishArmed);
+  ui.luHint.textContent = banishArmed
+    ? 'TAP A CARD TO REMOVE IT FROM THIS RUN'
+    : 'CHOOSE ONE — KEYS 1 / 2 / 3 · R REROLL · B BANISH';
+}
+
+export function initLevelUp() {
+  ui.reroll.addEventListener('click', function () { rerollCards(); });
+  ui.banish.addEventListener('click', function () { toggleBanish(); });
+}
+
+export function rerollCards() {
+  if (S.state !== 'level' || S.game.rerolls <= 0) return;
+  S.game.rerolls--;
+  banishArmed = false;
+  buildCards();
+  syncLuBtns();
+  sfx.tick();
+}
+
+export function toggleBanish() {
+  if (S.state !== 'level' || S.game.banishes <= 0) return;
+  banishArmed = !banishArmed;
+  syncLuBtns();
+  sfx.tick();
+}
+
+export function banishCard(i) {
+  if (S.state !== 'level' || S.game.banishes <= 0 || !choices[i]) return;
+  S.game.banishes--;
+  S.game.banished.push(choices[i].id);
+  banishArmed = false;
+  buildCards();
+  syncLuBtns();
+  sfx.tick();
+}
+
 export function pickCard(i) {
   if (S.state !== 'level' || !choices[i]) return;
+  if (banishArmed) { banishCard(i); return; }
   choices[i].app();
   bus.emit('upgrade-chosen', { id: choices[i].id, level: S.game.level });
   S.game.pendingLv--;

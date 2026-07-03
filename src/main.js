@@ -16,10 +16,13 @@ import { initPickups, resetPickups, updatePickups, dropPickup } from './game/pic
 import { initEconomy, grantGold } from './game/economy.js';
 import { initShop, closeShop } from './game/shop.js';
 import { metaBonuses } from './content/shop.js';
+import { activeCharacter, charMults } from './content/characters.js';
+import { initAchievements, closeAch, bumpLife } from './game/achievements.js';
+import { initCharSelect, renderPilots } from './game/charselect.js';
 import { dropChest, updateChests, updateChestReveal, dismissChest, resetChests } from './game/chests.js';
 import { updateWeapons } from './game/weapons.js';
 import { updatePlayer, damagePlayer } from './game/player.js';
-import { gainXP, pickCard } from './game/levelup.js';
+import { gainXP, pickCard, initLevelUp, rerollCards, toggleBanish } from './game/levelup.js';
 import { ui, updateHUD, showBestLine, updateWalletUI, showGameOver } from './game/hud.js';
 import { drawBackground, drawWorld, drawScreenFX } from './game/render.js';
 
@@ -35,16 +38,19 @@ function reset() {
   resetPickups();
   resetFX();
   const P = BALANCE.player, WP = BALANCE.weapons;
-  // permanent shop ranks apply once here, on top of the base stat block
+  // character multipliers scale the base block, then permanent shop ranks add on top
+  const ch = activeCharacter(S.save.data.character, S.save.data.ach);
+  const cm = charMults(ch.id);
   const mb = metaBonuses(S.save.data.shop);
   const lv0 = 1 + mb.startLevel;
-  Object.assign(S.stats, { dmg: 1 + mb.dmg, aspd: 1 + mb.aspd, spd: P.spd + mb.spd, maxhp: P.maxhp + mb.maxhp,
+  Object.assign(S.stats, { dmg: 1 + mb.dmg, aspd: 1 + mb.aspd, spd: P.spd * cm.spdMul + mb.spd,
+    maxhp: Math.round(P.maxhp * cm.hpMul) + mb.maxhp,
     regen: P.regen + mb.regen, magnet: P.magnet + mb.magnet, crit: P.crit, xpgain: P.xpgain, comboWin: P.comboWin,
     goldgain: 1 + mb.goldgain });
   Object.assign(S.player, { x: 0, y: 0, r: P.r, hp: S.stats.maxhp, dir: 0, tilt: 0, inv: 0, mvx: 0, mvy: 0, dead: false, trailT: 0 });
   Object.assign(S.weapons, {
-    blade: { lv: 0, ang: 0, trailT: 0, evo: false },
-    bolt: { lv: WP.bolt.startLv, t: WP.bolt.startT, evo: false },
+    blade: { lv: ch.weapon === 'blade' ? cm.startLv : 0, ang: 0, trailT: 0, evo: false },
+    bolt: { lv: ch.weapon === 'bolt' ? cm.startLv : 0, t: WP.bolt.startT, evo: false },
     nova: { lv: 0, t: WP.nova.startT, echo: 0, evo: false },
   });
   Object.assign(S.game, { time: 0, kills: 0, gold: 0, level: lv0, xp: 0, next: xpToNext(lv0),
@@ -53,7 +59,8 @@ function reset() {
     titanAt: BALANCE.titan.firstAt, titanN: 0, titansKilled: 0,
     eliteAt: BALANCE.elite.firstAt, elitesKilled: 0, bombFlash: 0,
     reaperAt: BALANCE.reaper.at, reaper: null, reaperSpawned: false, reaperWarned: false, reaperSlain: false,
-    combo: 0, comboT: 0, comboPulse: 0, threat: 1, pendingLv: 0, lvModalAt: -1e9, overT: 0, overShown: false, flash: 0, dieT: 0 });
+    combo: 0, comboT: 0, comboPulse: 0, threat: 1, pendingLv: 0, lvModalAt: -1e9, overT: 0, overShown: false, flash: 0, dieT: 0,
+    rerolls: BALANCE.levelup.rerolls, banishes: BALANCE.levelup.banishes, banished: [], character: ch.id });
   S.cam.x = 0; S.cam.y = 0; S.shake = 0; S.ts = 1; S.tsT = 1; S.freeze = 0;
   ui.timer.classList.remove('warn');
   updateHUD(true);
@@ -88,7 +95,7 @@ function resumeGame() {
 /* ---------- main update ---------- */
 function update(dt, rdt) {
   if (S.state === 'pause') return;
-  if (S.state === 'start' || S.state === 'shop') {
+  if (S.state === 'start' || S.state === 'shop' || S.state === 'ach') {
     S.cam.x += 18 * rdt; S.cam.y += 6 * rdt; // idle drift behind the menu
     updateParts(rdt);
     return;
@@ -184,6 +191,10 @@ function makeDebugHandle() {
     killBig() { for (const e of S.enemies.slice()) if (e.isBoss && !e.dead) { e.spawnT = 0; damageEnemy(e, e.hp * 2 + 1e6); } },
     killPlayer() { if (S.state === 'play') { S.player.inv = 0; damagePlayer(1e9); } },
     grantGold(n) { grantGold(n == null ? 100 : n); },
+    bumpLife(stat, n) { bumpLife(stat, n); },
+    setCharacter(id) { S.save.data.character = id; S.save.persist(); renderPilots(); },
+    reroll() { rerollCards(); },
+    banish() { toggleBanish(); },
     pause() { pauseGame(); },
     resume() { resumeGame(); },
     spawn(n) {
@@ -205,6 +216,9 @@ function makeDebugHandle() {
         elitesKilled: S.game.elitesKilled, bossAlive: S.game.bossAlive,
         titanN: S.game.titanN, reaper: !!S.game.reaper, reaperSlain: S.game.reaperSlain,
         music: music.enabled(), sfxOn: sfxEnabled(),
+        character: S.game.character, rerolls: S.game.rerolls, banishes: S.game.banishes,
+        banished: S.game.banished.slice(), ach: Object.keys(S.save.data.ach),
+        life: Object.assign({}, S.save.data.life),
         weapons: { bolt: { lv: S.weapons.bolt.lv, evo: !!S.weapons.bolt.evo },
           blade: { lv: S.weapons.blade.lv, evo: !!S.weapons.blade.evo },
           nova: { lv: S.weapons.nova.lv, evo: !!S.weapons.nova.evo } },
@@ -232,6 +246,9 @@ function mount(root, options) {
   initEconomy(updateWalletUI);
   initShop();
   initPickups();
+  initAchievements();
+  initCharSelect();
+  initLevelUp();
 
   bindInput(S.cv, {
     onKeyAction(code) {
@@ -241,9 +258,12 @@ function mount(root, options) {
       }
       if (S.state === 'play') { if (code === 'Escape') pauseGame(); return; }
       if (S.state === 'shop') { if (code === 'Escape') closeShop(); return; }
+      if (S.state === 'ach') { if (code === 'Escape') closeAch(); return; }
       if (S.state === 'start') { startRun(); return; }
       if (S.state === 'over' && S.game.overShown) { startRun(); return; }
       if (S.state === 'level') {
+        if (code === 'KeyR') { rerollCards(); return; }
+        if (code === 'KeyB') { toggleBanish(); return; }
         const n = { Digit1: 0, Digit2: 1, Digit3: 2, Numpad1: 0, Numpad2: 1, Numpad3: 2 }[code];
         if (n !== undefined) pickCard(n);
         return;
