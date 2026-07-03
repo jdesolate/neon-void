@@ -100,6 +100,24 @@ boot with zero console errors → start a run → drive movement → grant XP, r
 
 ---
 
+## Session 3.6 — Power-curve rebalance (additive stacking)
+
+*(Added 2026-07-03, owner decision — reverses the Session 2 "player power stays uncapped" amendment. Playtesting showed bosses and enemies still melt by mid-late game: Overcharge and Wisdom stacked multiplicatively without a cap, so player damage/XP grew exponentially while enemy HP was only polynomial until the late compounding term. Owner wants the io-survivor feel: linear, realistic power progression that keeps runs challenging.)*
+
+**Goal:** Player power grows linearly; the world stays a credible threat for the whole run.
+
+**IN scope**
+- Overcharge and Wisdom Shard stack **additively** (+15% of base per pick — `dmgAdd`/`xpgainAdd` in BALANCE) instead of multiplying; every pick still helps, but pick #10 no longer multiplies everything before it. Kills the Wisdom→levels→Overcharge exponential feedback loop.
+- World compounding retuned against the new linear player curve: `hpCompoundAfterMin` 8 → 10, `hpCompoundPerMin` 1.3 → 1.18 (the ×1.3 curve was tuned to chase exponential builds and would wall a linear player at ~min 11, making the Reaper unreachable). Target: a well-played run ends ~min 15–20, with the min-15 Reaper as the climactic wall.
+- Boss/titan/reaper base HP untouched first pass; revisit after owner playtest.
+- Unit test: additive stacking is linear (equal increments per pick).
+
+**OUT:** new content, caps on any player stat, touching the innate-growth or spawn curves.
+
+**Acceptance:** stacking + curve unit tests green; owner playtest confirms mid-game bosses no longer melt and good runs end ~min 15–20; smoke pass clean.
+
+---
+
 ## Session 4 — Gold economy + meta shop
 
 **Goal:** Permanent progression: dying still advances you.

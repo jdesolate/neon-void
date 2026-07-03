@@ -2,6 +2,17 @@
 
 Newest entries at the top. One entry per working session: what shipped, deviations from plan, known issues, next step.
 
+## 2026-07-03 — Session 3.6: power-curve rebalance (additive stacking)
+
+- **Owner design reversal (logged):** the Session 2 "player power stays uncapped by design" decision is withdrawn. Playtesting showed bosses/enemies still melt mid-late game — root cause: Overcharge (`dmg *= 1.15`) and Wisdom (`xpgain *= 1.15`) stacked multiplicatively with no cap, so player damage grew exponentially (and Wisdom fed a levels→Overcharge feedback loop) while enemy HP was only polynomial until minute 8. Owner chose additive stacking (linear growth, the io-survivor standard) with runs targeted to end ~min 15–20.
+- Overcharge/Wisdom now stack additively: `S.stats.dmg += U.dmgAdd`, `S.stats.xpgain += U.xpgainAdd` (BALANCE keys renamed `dmg`→`dmgAdd` 0.15, `xpgain`→`xpgainAdd` 0.15 to make the semantics explicit). Both remain uncapped — linear growth needs no cap. Aspd/spd/magnet/crit caps unchanged.
+- World compounding softened to match the linear player curve: `hpCompoundAfterMin` 8 → 10, `hpCompoundPerMin` 1.3 → 1.18. The old ×1.3/min curve was tuned to chase exponential builds and would wall a linear player at ~min 11, making the min-15 Reaper unreachable. New curve: enemy HP ~74× at min 15 (vs a rough ~20× effective player multiplier), so the world wins ~min 15–18.
+- Boss/titan/reaper base HP left untouched (first pass): back-of-envelope, a maxed additive build lands ~25–30k DPS vs the Reaper's ~190k HP at min 15 under the new curve — still "ends most runs, killable by an extreme build". Revisit after owner playtest.
+- Tests: 56 passing (`node --test`, +1) — new additive-linearity test (equal increments per pick, pin at 20 picks); existing compounding/curve tests are symbolic over BALANCE and self-adjusted.
+- Smoke pass clean: boot zero console errors/warnings, 50k-XP flood → level 103 with one modal + ~100 auto-picks through the new `+=` path, 60 spawns cleared in ~4s (damage path healthy after the key rename), boss+titan+reaper forced (reaper 8s telegraph honored), 188 enemies + all bigs at ~13.3ms frame average, `reaperSlain` + 2 chests on kill, death → game over. Note: the flood build killed the forced Reaper legitimately — at minute ~0 it has only ~13k HP (no compounding), expected and not a balance signal.
+- Known issues: none found. **Feel acceptance still open:** mechanics verified in-browser, but "mid-game bosses no longer melt / runs end ~min 15–20" needs an owner playtest; boss/titan/reaper base HP and the 1.18 rate are the knobs to nudge.
+- Next step: owner playtest of the new curve, then **Session 4** — gold economy + meta shop (wallet at save schema v4). See `docs/session-plan.md`.
+
 ## 2026-07-03 — Session 3.5: Titans + the Void Reaper (+ folded-in procedural BGM)
 
 - **Owner scope decision:** folded a full procedural BGM engine + boss-music intensification + music mute toggle into this session (normally out of Session 3.5's Titans/Reaper scope). Logged here as the sanctioned deviation. Rationale: the "make bosses feel grim/fearful" ask is served heavily by audio, and the no-asset rule means all music is synthesized in code regardless.
