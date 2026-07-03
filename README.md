@@ -11,6 +11,7 @@ A Vampire Survivors-style neon arcade shooter. Plain canvas + WebAudio, native E
 - **Escalating threat** — a boss every 60s, telegraphed enemy surges, and a late-game compounding difficulty curve so runs always find an ending.
 - **Titans & the Void Reaper** — recurring multi-dash super-bosses, and a milestone ultimate that's faster than you and turns the whole screen oppressive. Slay it if your build is strong enough.
 - **Gold & meta shop** — enemies drop gold you keep even when you die; the start-screen VOID SHOP sells eight permanent upgrades (HP, damage, attack speed, move speed, magnet, regen, starting level, gold gain) with escalating costs.
+- **Rare pickups & elite hunts** — kills occasionally drop a heal, a gem vacuum, or a screen-clearing singularity bomb; golden-ringed elite enemies stalk in every minute with 6× health and a guaranteed chest or gold burst for whoever brings them down.
 - **Synthesized adaptive music** — zero-asset procedural BGM that darkens and speeds up while a super-boss is loose, plus persisted music and SFX toggles. WebAudio SFX on every reward.
 - **Pause anywhere** — Esc or the pause pill; the game also auto-pauses the moment the window loses focus, so alt-tabbing never costs you a run.
 - **Combo scoring, seedable runs, and versioned saves** — best time/kills persist across updates via a migration chain; all gameplay randomness routes through one seedable RNG.
@@ -33,7 +34,7 @@ then open http://localhost:8137
 node --test
 ```
 
-Zero-dependency unit tests (Node built-in runner) covering the pure modules: event bus, save migrations, seedable RNG, balance/scaling math, upgrade-roll constraints, weapon evolutions, endgame (titan/reaper) HP scaling, and the gold economy (drop table, shop costs, meta bonuses). A browser smoke checklist lives at the top of [docs/session-plan.md](docs/session-plan.md); open the game with `?debug=1` to expose the `NV_DEBUG` driving handle.
+Zero-dependency unit tests (Node built-in runner) covering the pure modules: event bus, save migrations, seedable RNG, balance/scaling math, upgrade-roll constraints, weapon evolutions, endgame (titan/reaper) HP scaling, the gold economy (drop table, shop costs, meta bonuses), and the pickup drop table plus elite scheduling. A browser smoke checklist lives at the top of [docs/session-plan.md](docs/session-plan.md); open the game with `?debug=1` to expose the `NV_DEBUG` driving handle.
 
 ## Project docs
 
