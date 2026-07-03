@@ -10,6 +10,7 @@ A Vampire Survivors-style neon arcade shooter. Plain canvas + WebAudio, native E
 - **Weapon evolutions** — max a weapon and open a boss chest to transform it: Storm Lance, Halo of Ruin, Event Horizon, revealed through a slot-machine sequence.
 - **Escalating threat** — a boss every 60s, telegraphed enemy surges, and a late-game compounding difficulty curve so runs always find an ending.
 - **Titans & the Void Reaper** — recurring multi-dash super-bosses, and a milestone ultimate that's faster than you and turns the whole screen oppressive. Slay it if your build is strong enough.
+- **Gold & meta shop** — enemies drop gold you keep even when you die; the start-screen VOID SHOP sells eight permanent upgrades (HP, damage, attack speed, move speed, magnet, regen, starting level, gold gain) with escalating costs.
 - **Synthesized adaptive music** — zero-asset procedural BGM that darkens and speeds up while a super-boss is loose, plus a persisted on/off toggle. WebAudio SFX on every reward.
 - **Combo scoring, seedable runs, and versioned saves** — best time/kills persist across updates via a migration chain; all gameplay randomness routes through one seedable RNG.
 - **One responsive build** — desktop and mobile share the same code, with a touch joystick, safe-area-aware HUD, and adaptive quality under load.
@@ -31,7 +32,7 @@ then open http://localhost:8137
 node --test
 ```
 
-Zero-dependency unit tests (Node built-in runner) covering the pure modules: event bus, save migrations, seedable RNG, balance/scaling math, upgrade-roll constraints, weapon evolutions, and endgame (titan/reaper) HP scaling. A browser smoke checklist lives at the top of [docs/session-plan.md](docs/session-plan.md); open the game with `?debug=1` to expose the `NV_DEBUG` driving handle.
+Zero-dependency unit tests (Node built-in runner) covering the pure modules: event bus, save migrations, seedable RNG, balance/scaling math, upgrade-roll constraints, weapon evolutions, endgame (titan/reaper) HP scaling, and the gold economy (drop table, shop costs, meta bonuses). A browser smoke checklist lives at the top of [docs/session-plan.md](docs/session-plan.md); open the game with `?debug=1` to expose the `NV_DEBUG` driving handle.
 
 ## Project docs
 
