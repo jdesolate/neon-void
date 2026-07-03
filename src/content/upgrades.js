@@ -19,7 +19,7 @@ export const UPS = [
     lv: function () { return S.weapons.nova.lv; }, can: function () { return S.weapons.nova.lv < MAXLV; },
     app: function () { S.weapons.nova.lv++; } },
   { id: 'power', icon: '▲', col: '#ff8f5a', name: 'Overcharge', desc: function () { return '+15% all damage'; },
-    lv: null, can: function () { return true; }, app: function () { S.stats.dmg *= U.dmg; } },
+    lv: null, can: function () { return true; }, app: function () { S.stats.dmg += U.dmgAdd; } },
   { id: 'rapid', icon: '≡', col: '#ffe066', name: 'Rapid Core', desc: function () { return '+12% attack speed'; },
     lv: null, can: function () { return S.stats.aspd < U.aspdCap; }, app: function () { S.stats.aspd *= U.aspd; } },
   { id: 'swift', icon: '»', col: '#66ffe0', name: 'Ion Thrusters', desc: function () { return '+10% move speed'; },
@@ -33,7 +33,7 @@ export const UPS = [
   { id: 'crit', icon: '✕', col: '#ffd166', name: 'Deadeye', desc: function () { return '+8% crit chance (2× damage)'; },
     lv: null, can: function () { return S.stats.crit < U.critCap; }, app: function () { S.stats.crit += U.crit; } },
   { id: 'wisdom', icon: '◆', col: '#b76bff', name: 'Wisdom Shard', desc: function () { return '+15% XP gain'; },
-    lv: null, can: function () { return true; }, app: function () { S.stats.xpgain *= U.xpgain; } },
+    lv: null, can: function () { return true; }, app: function () { S.stats.xpgain += U.xpgainAdd; } },
   { id: 'combo', icon: '∞', col: '#ff9d3b', name: 'Adrenaline', desc: function () { return '+0.8s combo window'; },
     lv: null, can: function () { return S.stats.comboWin < U.comboWinCap; }, app: function () { S.stats.comboWin += U.comboWin; } },
 ];

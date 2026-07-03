@@ -18,7 +18,7 @@ export const BALANCE = {
   },
   tierUnlock: { t3Time: 200, t3Chance: 0.10, t2Time: 100, t2Chance: 0.22, t1Time: 40, t1Chance: 0.42 },
   enemyScale: {
-    hpPerMin: 0.6, hpPerMinSq: 0.1, hpCompoundAfterMin: 8, hpCompoundPerMin: 1.3,
+    hpPerMin: 0.6, hpPerMinSq: 0.1, hpCompoundAfterMin: 10, hpCompoundPerMin: 1.18,
     spdPerMin: 0.06, spdCap: 0.5, dmgPerMin: 0.12, spdJitterMin: 0.9, spdJitterMax: 1.1,
   },
   boss: {
@@ -70,9 +70,10 @@ export const BALANCE = {
   },
   chest: { pickupR: 30, slow: 0.12, cycleT: 2.1, lockT: 1.4, bobAmp: 4, gemCount: 8, gemRing: 60 },
   upgrades: {
-    dmg: 1.15, aspd: 1.12, aspdCap: 2.4, spd: 1.10, spdCap: 430, hp: 25,
+    // dmgAdd/xpgainAdd stack additively (+15% of base per pick) so player power grows linearly, not exponentially
+    dmgAdd: 0.15, aspd: 1.12, aspdCap: 2.4, spd: 1.10, spdCap: 430, hp: 25,
     regen: 1, regenCap: 6, magnet: 1.45, magnetCap: 520, crit: 0.08, critCap: 0.61,
-    xpgain: 1.15, comboWin: 0.8, comboWinCap: 7,
+    xpgainAdd: 0.15, comboWin: 0.8, comboWinCap: 7,
   },
   gems: { cap: 300, pickupR: 16, pullBase: 300, pullMax: 1400, maxSpd: 720, bossHealOnKill: 15 },
   time: { levelSlow: 0.1, overSlow: 0.06, freezeBoss: 0.22, freezeBig: 0.05, freezeSmall: 0.025 },
@@ -83,7 +84,7 @@ export function xpToNext(level) {
   return Math.floor(BALANCE.xp.base + level * BALANCE.xp.perLevel + Math.pow(level, BALANCE.xp.pow));
 }
 // Late-game compounding factor: 1 until the threshold minute, then geometric.
-// Shared by every HP curve so bosses/titans/the reaper all re-catch uncapped builds.
+// Tuned against the linear (additive-stacking) player curve so good runs end ~min 15-20.
 export function hpCompound(min) {
   const s = BALANCE.enemyScale;
   return min > s.hpCompoundAfterMin ? Math.pow(s.hpCompoundPerMin, min - s.hpCompoundAfterMin) : 1;

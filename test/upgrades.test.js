@@ -34,6 +34,19 @@ test('small pools degrade gracefully', () => {
   assert.equal(def.length, 3);
 });
 
+test('overcharge and wisdom stack additively, never compounding', () => {
+  const U = BALANCE.upgrades;
+  const power = UPS.find(u => u.id === 'power'), wisdom = UPS.find(u => u.id === 'wisdom');
+  Object.assign(S.stats, { dmg: 1, xpgain: 1 });
+  power.app(); wisdom.app();
+  assert.ok(Math.abs(S.stats.dmg - (1 + U.dmgAdd)) < 1e-9);
+  assert.ok(Math.abs(S.stats.xpgain - (1 + U.xpgainAdd)) < 1e-9);
+  // equal increments per pick: pick #20 is worth the same as pick #1
+  for (let i = 0; i < 19; i++) { power.app(); wisdom.app(); }
+  assert.ok(Math.abs(S.stats.dmg - (1 + 20 * U.dmgAdd)) < 1e-9);
+  assert.ok(Math.abs(S.stats.xpgain - (1 + 20 * U.xpgainAdd)) < 1e-9);
+});
+
 test('capped upgrades are excluded by their can() gates', () => {
   Object.assign(S.weapons, { bolt: { lv: 5 }, blade: { lv: 5 }, nova: { lv: 5 } });
   const U = BALANCE.upgrades;
