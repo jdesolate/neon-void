@@ -66,9 +66,29 @@ export const BALANCE = {
     stormlance: { intervalMul: 0.65, dmgMul: 1.3, speedMul: 1.3, r: 9 },
     haloruin: { radiusMul: 1.6, sizeMul: 1.3, spinMul: 1.2, dmgMul: 1.25, hitCd: 0.16 },
     horizon: { radiusMul: 1.4, intervalMul: 0.85, dmgMul: 1.35, pull: 46 },
-    xpFallback: 60,
   },
-  chest: { pickupR: 30, slow: 0.12, cycleT: 2.1, lockT: 1.4, bobAmp: 4, gemCount: 8, gemRing: 60 },
+  chest: { pickupR: 30, slow: 0.12, cycleT: 2.1, lockT: 1.4, bobAmp: 4 },
+  // Gold economy: tier-weighted drop chance per kill, guaranteed bursts from bigs/chests.
+  gold: {
+    cap: 140, pickupR: 18, textMin: 2,
+    tierChance: [0.04, 0.05, 0.22, 0.45], tierValue: [1, 1, 2, 4],
+    big: { boss: 12, titan: 30, reaper: 150 },
+    burstCoin: 4, burstRingMin: 24, burstRingMax: 90,
+    chest: 30,
+  },
+  // Meta shop: permanent upgrades bought with persistent gold; geometric cost growth.
+  shop: {
+    items: {
+      hull:    { ranks: 5, cost: 30, growth: 1.6, add: 15 },
+      amp:     { ranks: 5, cost: 40, growth: 1.6, add: 0.05 },
+      clock:   { ranks: 5, cost: 40, growth: 1.6, add: 0.04 },
+      ion:     { ranks: 3, cost: 35, growth: 1.7, add: 10 },
+      tractor: { ranks: 4, cost: 25, growth: 1.6, add: 25 },
+      nanite:  { ranks: 4, cost: 45, growth: 1.7, add: 0.25 },
+      uplink:  { ranks: 3, cost: 70, growth: 1.9, add: 1 },
+      midas:   { ranks: 5, cost: 50, growth: 1.8, add: 0.2 },
+    },
+  },
   upgrades: {
     // dmgAdd/xpgainAdd stack additively (+15% of base per pick) so player power grows linearly, not exponentially
     dmgAdd: 0.15, aspd: 1.12, aspdCap: 2.4, spd: 1.10, spdCap: 430, hp: 25,

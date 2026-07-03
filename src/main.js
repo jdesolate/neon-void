@@ -11,11 +11,15 @@ import { resetFX, updateParts, updateTexts } from './engine/particles.js';
 import { pickTier } from './content/enemies.js';
 import { initEnemySprites, spawnPos, makeEnemy, spawnBoss, spawnTitan, spawnReaper, spawnLogic, updateEnemies, damageEnemy } from './game/enemies.js';
 import { initGemSprites, updateGems } from './game/gems.js';
+import { initGoldSprites, updateCoins } from './game/gold.js';
+import { initEconomy, grantGold } from './game/economy.js';
+import { initShop, closeShop } from './game/shop.js';
+import { metaBonuses } from './content/shop.js';
 import { dropChest, updateChests, updateChestReveal, dismissChest, resetChests } from './game/chests.js';
 import { updateWeapons } from './game/weapons.js';
 import { updatePlayer, damagePlayer } from './game/player.js';
 import { gainXP, pickCard } from './game/levelup.js';
-import { ui, updateHUD, showBestLine, showGameOver } from './game/hud.js';
+import { ui, updateHUD, showBestLine, updateWalletUI, showGameOver } from './game/hud.js';
 import { drawBackground, drawWorld, drawScreenFX } from './game/render.js';
 
 function resize() {
@@ -25,18 +29,23 @@ function resize() {
 }
 
 function reset() {
-  S.enemies.length = 0; S.bolts.length = 0; S.gems.length = 0; S.novas.length = 0;
+  S.enemies.length = 0; S.bolts.length = 0; S.gems.length = 0; S.coins.length = 0; S.novas.length = 0;
   resetChests();
   resetFX();
   const P = BALANCE.player, WP = BALANCE.weapons;
-  Object.assign(S.player, { x: 0, y: 0, r: P.r, hp: P.maxhp, dir: 0, tilt: 0, inv: 0, mvx: 0, mvy: 0, dead: false, trailT: 0 });
-  Object.assign(S.stats, { dmg: 1, aspd: 1, spd: P.spd, maxhp: P.maxhp, regen: P.regen, magnet: P.magnet, crit: P.crit, xpgain: P.xpgain, comboWin: P.comboWin });
+  // permanent shop ranks apply once here, on top of the base stat block
+  const mb = metaBonuses(S.save.data.shop);
+  const lv0 = 1 + mb.startLevel;
+  Object.assign(S.stats, { dmg: 1 + mb.dmg, aspd: 1 + mb.aspd, spd: P.spd + mb.spd, maxhp: P.maxhp + mb.maxhp,
+    regen: P.regen + mb.regen, magnet: P.magnet + mb.magnet, crit: P.crit, xpgain: P.xpgain, comboWin: P.comboWin,
+    goldgain: 1 + mb.goldgain });
+  Object.assign(S.player, { x: 0, y: 0, r: P.r, hp: S.stats.maxhp, dir: 0, tilt: 0, inv: 0, mvx: 0, mvy: 0, dead: false, trailT: 0 });
   Object.assign(S.weapons, {
     blade: { lv: 0, ang: 0, trailT: 0, evo: false },
     bolt: { lv: WP.bolt.startLv, t: WP.bolt.startT, evo: false },
     nova: { lv: 0, t: WP.nova.startT, echo: 0, evo: false },
   });
-  Object.assign(S.game, { time: 0, kills: 0, level: 1, xp: 0, next: xpToNext(1),
+  Object.assign(S.game, { time: 0, kills: 0, gold: 0, level: lv0, xp: 0, next: xpToNext(lv0),
     spawnT: BALANCE.spawn.firstDelay, surgeT: BALANCE.spawn.surgeFirst,
     bossAt: BALANCE.boss.firstAt, bossN: 0, boss: null, bossAlive: 0,
     titanAt: BALANCE.titan.firstAt, titanN: 0, titansKilled: 0,
@@ -60,7 +69,7 @@ function startRun(seed) {
 
 /* ---------- main update ---------- */
 function update(dt, rdt) {
-  if (S.state === 'start') {
+  if (S.state === 'start' || S.state === 'shop') {
     S.cam.x += 18 * rdt; S.cam.y += 6 * rdt; // idle drift behind the menu
     updateParts(rdt);
     return;
@@ -82,6 +91,7 @@ function update(dt, rdt) {
   updateEnemies(dt);
   updateWeapons(dt);
   updateGems(dt);
+  updateCoins(dt);
   updateChests(dt);
   if (S.state === 'chest') updateChestReveal(rdt);
   updateParts(dt);
@@ -146,6 +156,7 @@ function makeDebugHandle() {
     killBoss() { const b = S.game.boss; if (b && !b.dead) { b.spawnT = 0; damageEnemy(b, b.hp * 2 + 1e6); } },
     killBig() { for (const e of S.enemies.slice()) if (e.isBoss && !e.dead) { e.spawnT = 0; damageEnemy(e, e.hp * 2 + 1e6); } },
     killPlayer() { if (S.state === 'play') { S.player.inv = 0; damagePlayer(1e9); } },
+    grantGold(n) { grantGold(n == null ? 100 : n); },
     spawn(n) {
       n = n == null ? 50 : n;
       for (let i = 0; i < n && S.enemies.length < BALANCE.spawn.cap; i++) {
@@ -158,8 +169,9 @@ function makeDebugHandle() {
     replaySeed() { startRun(S.game.seed); },
     state() {
       return { state: S.state, time: S.game.time, kills: S.game.kills, level: S.game.level,
-        hp: S.player.hp, enemies: S.enemies.length, seed: S.game.seed, lowFX: S.lowFX,
-        chests: S.chests.length, bossAlive: S.game.bossAlive,
+        hp: S.player.hp, maxhp: S.stats.maxhp, enemies: S.enemies.length, seed: S.game.seed, lowFX: S.lowFX,
+        gold: Math.floor(S.game.gold), wallet: S.save.data.gold, shop: Object.assign({}, S.save.data.shop),
+        coins: S.coins.length, chests: S.chests.length, bossAlive: S.game.bossAlive,
         titanN: S.game.titanN, reaper: !!S.game.reaper, reaperSlain: S.game.reaperSlain,
         music: music.enabled(),
         weapons: { bolt: { lv: S.weapons.bolt.lv, evo: !!S.weapons.bolt.evo },
@@ -185,9 +197,13 @@ function mount(root, options) {
   S.rng = createRng(S.options.seed != null ? S.options.seed >>> 0 : randomSeed());
   initEnemySprites();
   initGemSprites();
+  initGoldSprites();
+  initEconomy(updateWalletUI);
+  initShop();
 
   bindInput(S.cv, {
     onKeyAction(code) {
+      if (S.state === 'shop') { if (code === 'Escape') closeShop(); return; }
       if (S.state === 'start') { startRun(); return; }
       if (S.state === 'over' && S.game.overShown) { startRun(); return; }
       if (S.state === 'level') {
@@ -234,9 +250,11 @@ function mount(root, options) {
   reset();
   S.state = 'start';
   showBestLine();
+  updateWalletUI();
   requestAnimationFrame(frame);
 
-  const handle = { bus: bus };
+  // grantGold is part of the public seam: Habit Quest rewards flow in through it
+  const handle = { bus: bus, grantGold: grantGold };
   if (S.options.debug) {
     handle.debug = makeDebugHandle();
     window.NV_DEBUG = handle.debug;

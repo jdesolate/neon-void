@@ -38,6 +38,7 @@ html,body{height:100%;overflow:hidden;background:#05030f;touch-action:none;overs
 #killwrap{width:34%;max-width:220px;text-align:right}
 #kills{font-size:17px;font-weight:800;font-variant-numeric:tabular-nums;color:#ffd9e6;text-shadow:0 0 10px rgba(255,77,157,.8)}
 #kills small{display:block;font-size:9px;font-weight:700;letter-spacing:.22em;color:#b98fa8}
+#gold{font-size:13px;font-weight:800;font-variant-numeric:tabular-nums;color:#ffd166;text-shadow:0 0 10px rgba(255,209,102,.7);margin-top:2px}
 #combo{position:fixed;top:calc(env(safe-area-inset-top,0px) + 76px);left:50%;margin-left:-60px;width:120px;z-index:5;pointer-events:none;
   text-align:center;opacity:0;transition:opacity .25s;will-change:transform}
 #comboX{font-size:30px;font-weight:900;font-variant-numeric:tabular-nums;color:#ffe066;display:block;line-height:1}
@@ -86,6 +87,27 @@ html,body{height:100%;overflow:hidden;background:#05030f;touch-action:none;overs
 #chestDesc{font-size:12px;color:#d8c9a8;min-height:15px}
 #chestSlot.lock{animation:bestPop .5s cubic-bezier(.2,1.6,.4,1)}
 
+/* ---------- Gold economy / meta shop ---------- */
+.wallet{font-size:14px;font-weight:800;letter-spacing:.12em;color:#ffd166;text-shadow:0 0 10px rgba(255,209,102,.6)}
+#shopBtn,#shopClose{pointer-events:auto;touch-action:manipulation;cursor:pointer;min-height:48px;padding:12px 32px;
+  border-radius:999px;border:1px solid rgba(255,209,102,.55);background:rgba(30,22,6,.72);color:#ffd166;
+  font:inherit;font-size:14px;font-weight:900;letter-spacing:.18em;box-shadow:0 0 16px rgba(255,209,102,.25)}
+#shopBtn:active,#shopClose:active{transform:scale(.96)}
+#shopItems{display:flex;flex-direction:column;gap:8px;width:min(380px,92vw);flex:0 1 auto;min-height:0;
+  overflow-y:auto;touch-action:pan-y;-webkit-overflow-scrolling:touch;padding:2px}
+.shopRow{pointer-events:auto;touch-action:manipulation;cursor:pointer;text-align:left;width:100%;min-height:60px;flex:0 0 auto;
+  display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:14px;border:1px solid rgba(255,209,102,.3);
+  background:linear-gradient(160deg,rgba(30,24,10,.96),rgba(12,9,4,.96));color:#e8f0ff;font:inherit;
+  box-shadow:0 0 12px rgba(255,209,102,.08),0 6px 18px rgba(0,0,0,.5)}
+.shopRow:active{transform:scale(.98)}
+.shopRow.locked{opacity:.55}
+.shopRow.maxed{opacity:.8;cursor:default}
+.sRight{margin-left:auto;text-align:right;white-space:nowrap}
+.pips{display:block;font-size:11px;letter-spacing:.18em;color:#ffd166}
+.sCost{display:block;font-size:12px;font-weight:800;color:#ffe9b0;margin-top:2px}
+.shopRow.locked .sCost{color:#a89a78}
+#goGold{color:#ffd166;text-shadow:0 0 16px rgba(255,209,102,.8)}
+
 .goTitle{font-size:clamp(28px,8vw,44px);font-weight:900;letter-spacing:.16em;color:#ff5a7a;text-shadow:0 0 22px rgba(255,60,90,.8)}
 .newbest{font-size:16px;font-weight:900;letter-spacing:.24em;color:#ffe066;padding:6px 18px;border:1px solid rgba(255,224,102,.6);
   border-radius:999px;text-shadow:0 0 14px rgba(255,224,102,.9);box-shadow:0 0 18px rgba(255,224,102,.35);animation:bestPop .5s cubic-bezier(.2,1.6,.4,1)}
@@ -114,7 +136,7 @@ html,body{height:100%;overflow:hidden;background:#05030f;touch-action:none;overs
   <div id="hudrow">
     <div id="hpwrap"><div id="hpbar"><div id="hpfill"></div></div><div id="lvltag">LV 1</div></div>
     <div id="mid"><div id="timer">0:00</div><div id="threat">THREAT 1</div></div>
-    <div id="killwrap"><div id="kills">0<small>KILLS</small></div></div>
+    <div id="killwrap"><div id="kills">0<small>KILLS</small></div><div id="gold">◈ 0</div></div>
   </div>
   <div id="combo"><span id="comboX">×2</span><span class="clab">COMBO</span></div>
 </div>
@@ -122,8 +144,17 @@ html,body{height:100%;overflow:hidden;background:#05030f;touch-action:none;overs
   <h1 class="title">NEON<span>VOID</span></h1>
   <div class="sub">WAVE SURVIVOR</div>
   <div id="bestLine" class="best"></div>
+  <div id="walletLine" class="wallet"></div>
   <div class="prompt">TAP OR PRESS ANY KEY</div>
+  <button id="shopBtn" type="button">◈ VOID SHOP</button>
   <div class="hint">WASD / ARROWS — TOUCH: DRAG ANYWHERE TO MOVE</div>
+</div>
+<div id="shop" class="overlay hidden">
+  <div class="luTitle">VOID SHOP</div>
+  <div id="shopWallet" class="wallet"></div>
+  <div id="shopItems"></div>
+  <div class="hint">PERMANENT — APPLIES TO EVERY RUN</div>
+  <button id="shopClose" type="button">BACK</button>
 </div>
 <div id="levelup" class="overlay hidden">
   <div class="luTitle">LEVEL UP</div>
@@ -146,6 +177,7 @@ html,body{height:100%;overflow:hidden;background:#05030f;touch-action:none;overs
   <div class="goStats">
     <div><span id="goTime">0:00</span><label>SURVIVED</label></div>
     <div><span id="goKills">0</span><label>KILLS</label></div>
+    <div><span id="goGold">+0</span><label>GOLD</label></div>
   </div>
   <div id="goBest" class="best"></div>
   <button id="restartBtn" type="button">RUN AGAIN</button>

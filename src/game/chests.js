@@ -1,17 +1,16 @@
-// Boss treasure chests: drop entity, slow-mo slot-machine reveal, evolution or XP fallback.
+// Boss treasure chests: drop entity, slow-mo slot-machine reveal, evolution or gold fallback.
 import { S } from '../state.js';
 import { BALANCE } from '../config.js';
-import { TAU, dist2 } from '../utils.js';
+import { dist2 } from '../utils.js';
 import { EVOLUTIONS, pickEvolution } from '../content/evolutions.js';
 import { burst, puff, addText, announce, confetti } from '../engine/particles.js';
 import { sfx } from '../engine/audio.js';
 import { bus } from '../engine/events.js';
-import { dropGem } from './gems.js';
+import { dropGoldBurst } from './gold.js';
 import { ui } from './hud.js';
 
-// Gold economy lands in Session 4; until then the no-evolution fallback is an XP burst.
-const XP_RESULT = { id: 'xp', name: 'VOID SURGE', icon: '✦', color: '#5affc8', desc: 'A burst of raw XP' };
-const CANDIDATES = EVOLUTIONS.concat([XP_RESULT]);
+const GOLD_RESULT = { id: 'gold', name: 'GOLD HOARD', icon: '◈', color: '#ffd166', desc: 'A burst of void gold' };
+const CANDIDATES = EVOLUTIONS.concat([GOLD_RESULT]);
 
 let reveal = null;
 
@@ -50,7 +49,7 @@ function openChest(c) {
   const C = BALANCE.chest;
   S.state = 'chest'; S.tsT = C.slow;
   S.player.inv = 9999;
-  reveal = { t: 0, swapT: 0, idx: 0, locked: false, doneT: 0, result: pickEvolution(S.weapons) || XP_RESULT };
+  reveal = { t: 0, swapT: 0, idx: 0, locked: false, doneT: 0, result: pickEvolution(S.weapons) || GOLD_RESULT };
   burst(c.x, c.y, '#ffd166', 26, 300, 4, 0.7);
   sfx.chest();
   showCandidate(CANDIDATES[0]);
@@ -96,12 +95,8 @@ function lockReveal() {
   ui.chestDesc.textContent = res.desc;
   ui.chestSlot.classList.add('lock');
   ui.chestHint.textContent = 'TAP OR PRESS ANY KEY';
-  if (res.id === 'xp') {
-    const C = BALANCE.chest, gemV = BALANCE.evolutions.xpFallback / C.gemCount;
-    for (let i = 0; i < C.gemCount; i++) {
-      const a = i / C.gemCount * TAU;
-      dropGem(S.player.x + Math.cos(a) * C.gemRing, S.player.y + Math.sin(a) * C.gemRing, gemV);
-    }
+  if (res.id === 'gold') {
+    dropGoldBurst(S.player.x, S.player.y, BALANCE.gold.chest);
     sfx.bigKill();
   } else {
     S.weapons[res.base].evo = true;
@@ -110,7 +105,7 @@ function lockReveal() {
     sfx.evolve();
     bus.emit('weapon-evolved', { id: res.id, base: res.base, time: S.game.time });
   }
-  bus.emit('chest-opened', { result: res.id === 'xp' ? 'xp' : 'evolution', evo: res.id === 'xp' ? null : res.id, time: S.game.time });
+  bus.emit('chest-opened', { result: res.id === 'gold' ? 'gold' : 'evolution', evo: res.id === 'gold' ? null : res.id, time: S.game.time });
 }
 
 export function dismissChest() {

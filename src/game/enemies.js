@@ -3,13 +3,14 @@ import { S, addShake } from '../state.js';
 import { BALANCE, enemyHpMul, enemySpdMul, enemyDmgMul, spawnInterval, bossHp, bossDmg,
   titanHp, titanDmg, reaperHp, reaperDmg } from '../config.js';
 import { TAU, rnd, dist2 } from '../utils.js';
-import { TIERS, BOSS_STYLE, TITAN_STYLE, REAPER_STYLE, pickTier } from '../content/enemies.js';
+import { TIERS, BOSS_STYLE, TITAN_STYLE, REAPER_STYLE, pickTier, goldFor } from '../content/enemies.js';
 import { bodySprite, flatSprite } from '../engine/sprites.js';
 import { burst, puff, addText, announce, addPart, confetti } from '../engine/particles.js';
 import { sfx } from '../engine/audio.js';
 import { bus } from '../engine/events.js';
 import { damagePlayer } from './player.js';
 import { dropGem } from './gems.js';
+import { dropGold, dropGoldBurst } from './gold.js';
 import { dropChest } from './chests.js';
 import { ui } from './hud.js';
 
@@ -279,9 +280,12 @@ function onKill(e) {
       dropGem(e.x + Math.cos(a) * S.rng.range(cfg.gemRingMin, cfg.gemRingMax), e.y + Math.sin(a) * S.rng.range(cfg.gemRingMin, cfg.gemRingMax), cfg.gemValue);
     }
     S.player.hp = Math.min(S.stats.maxhp, S.player.hp + cfg.killHeal);
+    dropGoldBurst(e.x, e.y, BALANCE.gold.big[kind]);
     dropChest(e.x, e.y);
   } else {
     dropGem(e.x, e.y, e.xp);
+    const gv = goldFor(e.tier, S.rng.next());
+    if (gv > 0) dropGold(e.x, e.y, gv);
   }
   bus.emit('enemy-killed', { tier: e.tier, isBoss: e.isBoss, kind: e.kind || null, xp: e.xp, x: e.x, y: e.y, combo: game.combo });
 }

@@ -1,5 +1,5 @@
 // WebAudio SFX + procedural BGM, gesture-gated: initAudio only does work after a user gesture resumes the context.
-let AC = null, master = null, lastHitSfx = 0;
+let AC = null, master = null, lastHitSfx = 0, lastCoinSfx = 0;
 
 export function initAudio() {
   try {
@@ -30,6 +30,8 @@ export const sfx = {
   kill() { tone(300, 60, .16, 'sawtooth', .13); tone(900, 300, .07, 'square', .06); },
   bigKill() { tone(200, 40, .3, 'sawtooth', .2); tone(1100, 300, .12, 'square', .09); },
   pickup(c) { const f = 520 + Math.min(c, 40) * 14; tone(f, f * 1.9, .07, 'sine', .05); },
+  coin() { const n = performance.now(); if (n - lastCoinSfx < 60) return; lastCoinSfx = n; tone(1050, 1500, .06, 'sine', .05); tone(1580, 1580, .05, 'sine', .035, .04); },
+  buy() { tone(660, 990, .12, 'sine', .12); tone(1320, 1760, .12, 'sine', .08, .08); },
   level() { [523, 659, 784, 1046].forEach((f, i) => tone(f, f, .14, 'sine', .16, i * .07)); tone(2093, 1568, .3, 'triangle', .05, .28); },
   boss() { tone(60, 34, 1.1, 'sawtooth', .26); tone(233, 110, .5, 'square', .1, .1); tone(233, 110, .5, 'square', .1, .7); },
   dash() { tone(420, 80, .28, 'sawtooth', .14); },

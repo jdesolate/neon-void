@@ -1,8 +1,8 @@
 // Versioned save behind a storage adapter. One key, JSON blob, migration chain on load.
 // v1 was two raw localStorage keys (nv_bestT / nv_bestK); v2 is { v: 2, best: { time, kills } };
-// v3 adds { settings: { music } } for the audio toggle.
+// v3 adds { settings: { music } } for the audio toggle; v4 adds { gold, shop } for the meta economy.
 export const SAVE_KEY = 'nv_save';
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 const LEGACY_KEYS = { time: 'nv_bestT', kills: 'nv_bestK' };
 
 export function localStorageAdapter() {
@@ -18,7 +18,7 @@ export function defaultSettings() {
 }
 
 export function defaultSave() {
-  return { v: SCHEMA_VERSION, best: { time: 0, kills: 0 }, settings: defaultSettings() };
+  return { v: SCHEMA_VERSION, best: { time: 0, kills: 0 }, settings: defaultSettings(), gold: 0, shop: {} };
 }
 
 function num(v) { const n = +v; return Number.isFinite(n) && n > 0 ? n : 0; }
@@ -31,6 +31,8 @@ function readLegacy(adapter) {
 const MIGRATIONS = {
   // v2 -> v3: introduce audio settings, music on by default. Additive, never wipes bests.
   2(data) { return { v: 3, best: data.best, settings: defaultSettings() }; },
+  // v3 -> v4: introduce the gold wallet and meta-shop ranks. Additive, never wipes bests.
+  3(data) { return { v: 4, best: data.best, settings: data.settings, gold: 0, shop: {} }; },
 };
 
 function migrateChain(data) {
@@ -56,6 +58,15 @@ function load(adapter) {
           migrated.best.kills = num(migrated.best.kills);
           if (!migrated.settings || typeof migrated.settings !== 'object') migrated.settings = defaultSettings();
           if (typeof migrated.settings.music !== 'boolean') migrated.settings.music = true;
+          migrated.gold = Math.floor(num(migrated.gold));
+          const shop = {};
+          if (migrated.shop && typeof migrated.shop === 'object') {
+            for (const k of Object.keys(migrated.shop)) {
+              const r = Math.floor(+migrated.shop[k]);
+              if (Number.isFinite(r) && r > 0) shop[k] = r;
+            }
+          }
+          migrated.shop = shop;
           return migrated;
         }
       }

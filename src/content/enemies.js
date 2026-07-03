@@ -22,3 +22,9 @@ export function pickTier(time, r) {
   if (time > T.t1Time && r < T.t1Chance) return 1;
   return 0;
 }
+
+// Pure gold roll: tier-weighted chance and value from one RNG roll, seed-testable.
+export function goldFor(tier, r) {
+  const G = BALANCE.gold;
+  return r < G.tierChance[tier] ? G.tierValue[tier] : 0;
+}

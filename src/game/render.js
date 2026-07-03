@@ -6,6 +6,7 @@ import { drawParts, drawTexts, drawAnns } from '../engine/particles.js';
 import { TOUCH, joy } from '../engine/input.js';
 import { bladeStats } from '../content/weapons.js';
 import { gemKind } from './gems.js';
+import { COIN } from './gold.js';
 
 /* ---------- parallax background ---------- */
 const starLayers = [
@@ -174,6 +175,12 @@ export function drawWorld() {
     if (!onScreen(g.x, g.y, 40)) continue;
     const k = gemKind(g.v), s = (k.spr.size / 2) * (0.85 + 0.15 * Math.sin(g.t));
     ctx.drawImage(k.spr.img, g.x - s, g.y - s, s * 2, s * 2);
+  }
+  // gold coins: flipping discs so they read differently from the diamond gems
+  for (const c of S.coins) {
+    if (!onScreen(c.x, c.y, 40)) continue;
+    const half = COIN.spr.size / 2, f = 0.3 + 0.7 * Math.abs(Math.sin(c.t));
+    ctx.drawImage(COIN.spr.img, c.x - half * f, c.y - half, half * 2 * f, half * 2);
   }
   // nova rings
   for (const n of S.novas) {

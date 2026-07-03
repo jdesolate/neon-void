@@ -9,9 +9,10 @@ const $ = function (id) { return document.getElementById(id); };
 export const ui = {
   xp: $('xpfill'), hp: $('hpfill'), lvl: $('lvltag'), timer: $('timer'), threat: $('threat'), kills: $('kills'),
   combo: $('combo'), comboX: $('comboX'), start: $('start'), bestLine: $('bestLine'), levelup: $('levelup'), cards: $('cards'),
-  over: $('over'), nbTime: $('nbTime'), nbKills: $('nbKills'), goTime: $('goTime'), goKills: $('goKills'), goBest: $('goBest'), restart: $('restartBtn'),
+  over: $('over'), nbTime: $('nbTime'), nbKills: $('nbKills'), goTime: $('goTime'), goKills: $('goKills'), goGold: $('goGold'), goBest: $('goBest'), restart: $('restartBtn'),
   chest: $('chest'), chestSlot: $('chestSlot'), chestIcon: $('chestIcon'), chestName: $('chestName'), chestDesc: $('chestDesc'), chestHint: $('chestHint'),
-  music: $('musicBtn'),
+  music: $('musicBtn'), gold: $('gold'), walletLine: $('walletLine'),
+  shop: $('shop'), shopBtn: $('shopBtn'), shopClose: $('shopClose'), shopItems: $('shopItems'), shopWallet: $('shopWallet'),
 };
 
 export function showBestLine() {
@@ -19,7 +20,14 @@ export function showBestLine() {
   ui.bestLine.textContent = b.time > 0 ? ('BEST ' + fmtTime(b.time) + '  ·  ' + b.kills + ' KILLS — BEAT IT') : 'FIRST RUN — SET THE BAR';
 }
 
-const hudCache = { hp: -1, xp: -1, lvl: -1, timer: '', kills: -1, combo: -1 };
+// Wallet labels on the start screen and inside the shop overlay.
+export function updateWalletUI() {
+  const g = S.save.data.gold;
+  ui.walletLine.textContent = '◈ ' + g + ' GOLD';
+  ui.shopWallet.textContent = '◈ ' + g;
+}
+
+const hudCache = { hp: -1, xp: -1, lvl: -1, timer: '', kills: -1, combo: -1, gold: -1 };
 export function updateHUD(force) {
   const hpP = Math.round(clamp(S.player.hp / S.stats.maxhp, 0, 1) * 100);
   if (force || hpP !== hudCache.hp) { hudCache.hp = hpP; ui.hp.style.width = hpP + '%'; }
@@ -32,6 +40,8 @@ export function updateHUD(force) {
     hudCache.kills = S.game.kills;
     ui.kills.innerHTML = S.game.kills + '<small>KILLS</small>';
   }
+  const goldFloor = Math.floor(S.game.gold);
+  if (force || goldFloor !== hudCache.gold) { hudCache.gold = goldFloor; ui.gold.textContent = '◈ ' + goldFloor; }
   if (force || S.game.combo !== hudCache.combo) {
     hudCache.combo = S.game.combo;
     if (S.game.combo >= 2) {
@@ -50,12 +60,13 @@ export function updateHUD(force) {
 export function showGameOver() {
   S.game.overShown = true;
   const b = S.save.data.best;
-  const t = Math.floor(S.game.time), k = S.game.kills;
+  const t = Math.floor(S.game.time), k = S.game.kills, gold = Math.round(S.game.gold);
   const nbT = t > b.time, nbK = k > b.kills;
   ui.nbTime.classList.toggle('hidden', !nbT);
   ui.nbKills.classList.toggle('hidden', !nbK);
   ui.goTime.textContent = fmtTime(t);
   ui.goKills.textContent = String(k);
+  ui.goGold.textContent = '+' + gold;
   ui.goBest.textContent = (b.time > 0) ? ('PREVIOUS BEST ' + fmtTime(b.time) + ' · ' + b.kills + ' KILLS') : '';
   if (nbT || nbK) {
     b.time = Math.max(t, b.time); b.kills = Math.max(k, b.kills);
@@ -64,7 +75,7 @@ export function showGameOver() {
   }
   ui.over.classList.remove('hidden');
   bus.emit('run-ended', {
-    time: t, kills: k, level: S.game.level, seed: S.game.seed,
+    time: t, kills: k, level: S.game.level, gold: gold, seed: S.game.seed,
     evolutions: EVOLUTIONS.filter(function (ev) { return S.weapons[ev.base] && S.weapons[ev.base].evo; }).map(function (ev) { return ev.id; }),
     titansKilled: S.game.titansKilled, reaperSlain: !!S.game.reaperSlain,
     newBestTime: nbT, newBestKills: nbK, bestTime: b.time, bestKills: b.kills,
