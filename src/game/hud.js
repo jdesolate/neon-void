@@ -11,6 +11,7 @@ export const ui = {
   combo: $('combo'), comboX: $('comboX'), start: $('start'), bestLine: $('bestLine'), levelup: $('levelup'), cards: $('cards'),
   over: $('over'), nbTime: $('nbTime'), nbKills: $('nbKills'), goTime: $('goTime'), goKills: $('goKills'), goBest: $('goBest'), restart: $('restartBtn'),
   chest: $('chest'), chestSlot: $('chestSlot'), chestIcon: $('chestIcon'), chestName: $('chestName'), chestDesc: $('chestDesc'), chestHint: $('chestHint'),
+  music: $('musicBtn'),
 };
 
 export function showBestLine() {
@@ -65,6 +66,7 @@ export function showGameOver() {
   bus.emit('run-ended', {
     time: t, kills: k, level: S.game.level, seed: S.game.seed,
     evolutions: EVOLUTIONS.filter(function (ev) { return S.weapons[ev.base] && S.weapons[ev.base].evo; }).map(function (ev) { return ev.id; }),
+    titansKilled: S.game.titansKilled, reaperSlain: !!S.game.reaperSlain,
     newBestTime: nbT, newBestKills: nbK, bestTime: b.time, bestKills: b.kills,
   });
 }

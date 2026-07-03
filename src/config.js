@@ -27,6 +27,24 @@ export const BALANCE = {
     firstChaseT: 3, chaseT: 2.6, teleT: 0.9, dashT: 0.6, dashSpd: 760, dashReach: 30, recoverT: 1.1, recoverSpdMul: 0.3,
     shockR: 110, shockDmgMul: 0.8, killHeal: 15, gemCount: 10, gemValue: 4, gemRingMin: 20, gemRingMax: 70,
   },
+  // Titan: recurring super-boss (~every 5 min after min 5). Rides the compounding
+  // enemy curve so it keeps pace with exponential builds; multi-dash attack.
+  titan: {
+    firstAt: 300, every: 300, warnAt: 6, margin: 150, spawnT: 0.9,
+    baseHp: 2600, hpPerTitan: 0.6, hpPerMin: 0.35, spd: 54, dmg: 32, dmgPerMin: 0.12, xp: 140,
+    rScale: 2.1, dashes: 3, dashGapT: 0.32,
+    firstChaseT: 2.4, chaseT: 2.2, teleT: 1.0, dashT: 0.55, dashSpd: 820, dashReach: 34, recoverT: 1.3, recoverSpdMul: 0.3,
+    shockR: 150, shockDmgMul: 0.9, killHeal: 22, gemCount: 16, gemValue: 6, gemRingMin: 30, gemRingMax: 100,
+  },
+  // Void Reaper: single milestone ultimate (~min 15). Faster than the player,
+  // massive compounding HP; killable only by an extreme build. reaperSlain feeds a Session 6 achievement.
+  reaper: {
+    at: 900, warnAt: 8, margin: 180, spawnT: 1.4,
+    baseHp: 12000, hpPerMin: 0.4, spd: 252, dmg: 62, dmgPerMin: 0.1, xp: 600,
+    rScale: 2.9, dashes: 2, dashGapT: 0.28,
+    firstChaseT: 1.6, chaseT: 1.5, teleT: 0.85, dashT: 0.5, dashSpd: 900, dashReach: 38, recoverT: 0.9, recoverSpdMul: 0.5,
+    shockR: 180, shockDmgMul: 1.0, killHeal: 40, gemCount: 26, gemValue: 9, gemRingMin: 40, gemRingMax: 130,
+  },
   weapons: {
     maxLv: 5,
     bolt: {
@@ -64,12 +82,16 @@ export const BALANCE = {
 export function xpToNext(level) {
   return Math.floor(BALANCE.xp.base + level * BALANCE.xp.perLevel + Math.pow(level, BALANCE.xp.pow));
 }
+// Late-game compounding factor: 1 until the threshold minute, then geometric.
+// Shared by every HP curve so bosses/titans/the reaper all re-catch uncapped builds.
+export function hpCompound(min) {
+  const s = BALANCE.enemyScale;
+  return min > s.hpCompoundAfterMin ? Math.pow(s.hpCompoundPerMin, min - s.hpCompoundAfterMin) : 1;
+}
 export function enemyHpMul(min) {
   const s = BALANCE.enemyScale;
-  let m = 1 + min * s.hpPerMin + min * min * s.hpPerMinSq;
-  // late-game compounding so the world re-catches uncapped player builds
-  if (min > s.hpCompoundAfterMin) m *= Math.pow(s.hpCompoundPerMin, min - s.hpCompoundAfterMin);
-  return m;
+  const m = 1 + min * s.hpPerMin + min * min * s.hpPerMinSq;
+  return m * hpCompound(min);
 }
 export function enemySpdMul(min) {
   const s = BALANCE.enemyScale; return 1 + Math.min(s.spdCap, min * s.spdPerMin);
@@ -86,10 +108,28 @@ export function spawnInterval(min) {
   return Math.max(s.minInterval, t);
 }
 export function bossHp(bossN, min) {
-  const b = BALANCE.boss; return b.baseHp * (1 + (bossN - 1) * b.hpPerBoss) * (1 + min * b.hpPerMin);
+  // adopts the late-game compounding term so the 60s boss cycle stays relevant vs god-builds
+  const b = BALANCE.boss; return b.baseHp * (1 + (bossN - 1) * b.hpPerBoss) * (1 + min * b.hpPerMin) * hpCompound(min);
 }
 export function bossDmg(min) {
   const b = BALANCE.boss; return b.dmg * (1 + min * b.dmgPerMin);
+}
+// nth titan spawn time (seconds): first at firstAt, then every `every` seconds.
+export function nthTitanTime(n) {
+  const t = BALANCE.titan; return t.firstAt + (n - 1) * t.every;
+}
+export function titanHp(titanN, min) {
+  const t = BALANCE.titan;
+  return t.baseHp * (1 + (titanN - 1) * t.hpPerTitan) * (1 + min * t.hpPerMin) * hpCompound(min);
+}
+export function titanDmg(min) {
+  const t = BALANCE.titan; return t.dmg * (1 + min * t.dmgPerMin);
+}
+export function reaperHp(min) {
+  const r = BALANCE.reaper; return r.baseHp * (1 + min * r.hpPerMin) * hpCompound(min);
+}
+export function reaperDmg(min) {
+  const r = BALANCE.reaper; return r.dmg * (1 + min * r.dmgPerMin);
 }
 export function comboMult(combo) {
   const c = BALANCE.combo; return 1 + Math.min(combo, c.maxStack) * c.multPer;

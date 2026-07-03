@@ -65,11 +65,20 @@ function drawEnemy(e) {
     s = 1 + (1 - f) * 0.7; alpha = f;
   }
   const rot = e.isBoss ? e.rot : Math.sin(S.elapsed * 1.3 + e.wob) * 0.3 + e.rot * S.elapsed;
-  const half = e.spr.size / 2;
+  const half = e.spr.size / 2, bs = e.sprScale || 1;
   ctx.save();
   ctx.translate(e.x, e.y);
+  // dark menace aura behind the super-bosses so they read as wrong from afar
+  if (e.isBoss && e.aura && !S.lowFX) {
+    const ar = e.r * (1.7 + 0.12 * Math.sin(S.elapsed * 3));
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = 0.28;
+    ctx.drawImage(glowDot(e.aura), -ar, -ar, ar * 2, ar * 2);
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
+  }
   ctx.rotate(rot);
-  ctx.scale(e.sx * s, e.sy * s);
+  ctx.scale(e.sx * s * bs, e.sy * s * bs);
   ctx.globalAlpha = alpha;
   ctx.drawImage(e.spr.img, -half, -half);
   if (e.hitT > 0) { ctx.globalAlpha = alpha * (e.hitT / 0.09); ctx.drawImage(e.flash.img, -half, -half); }
@@ -78,11 +87,11 @@ function drawEnemy(e) {
 }
 
 function drawBossExtras(b) {
-  const ctx = S.ctx;
+  const ctx = S.ctx, col = b.aura || '#ff4030';
   if (b.phase === 'tele') {
     const p = 1 - b.pt / 0.9, pulse = 0.5 + 0.5 * Math.sin(S.elapsed * 22);
     ctx.save();
-    ctx.strokeStyle = '#ff4030'; ctx.shadowColor = '#ff4030'; ctx.shadowBlur = S.lowFX ? 0 : 22;
+    ctx.strokeStyle = col; ctx.shadowColor = col; ctx.shadowBlur = S.lowFX ? 0 : 22;
     ctx.globalAlpha = 0.55 * (0.6 + 0.4 * pulse);
     ctx.lineWidth = 3;
     ctx.beginPath(); ctx.arc(b.x, b.y, b.r * (1 + p * 1.6), 0, TAU); ctx.stroke();
@@ -94,13 +103,13 @@ function drawBossExtras(b) {
     ctx.beginPath(); ctx.arc(b.tx, b.ty, 22 + 8 * pulse, 0, TAU); ctx.stroke();
     ctx.restore();
   }
-  // boss HP bar
-  const w = 96, f = clamp(b.hp / b.maxhp, 0, 1);
+  // HP bar, scaled a touch wider for the bigger super-bosses
+  const w = b.kind === 'boss' ? 96 : 132, f = clamp(b.hp / b.maxhp, 0, 1);
   ctx.save();
   ctx.globalAlpha = 0.9;
   ctx.fillStyle = 'rgba(20,5,10,0.7)';
   ctx.fillRect(b.x - w / 2, b.y - b.r - 22, w, 7);
-  ctx.fillStyle = '#ff4030'; ctx.shadowColor = '#ff4030'; ctx.shadowBlur = S.lowFX ? 0 : 8;
+  ctx.fillStyle = col; ctx.shadowColor = col; ctx.shadowBlur = S.lowFX ? 0 : 8;
   ctx.fillRect(b.x - w / 2 + 1, b.y - b.r - 21, (w - 2) * f, 5);
   ctx.restore();
 }
@@ -177,9 +186,9 @@ export function drawWorld() {
     ctx.beginPath(); ctx.arc(n.cx, n.cy, n.r, 0, TAU); ctx.stroke();
   }
   ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
-  // enemies then boss overlays
+  // enemies then boss overlays (boss, titans, reaper all get telegraph + HP bar)
   for (const e of S.enemies) drawEnemy(e);
-  if (S.game.boss && !S.game.boss.dead) drawBossExtras(S.game.boss);
+  for (const e of S.enemies) if (e.isBoss && !e.dead) drawBossExtras(e);
   // bolts
   ctx.globalCompositeOperation = 'lighter';
   for (const b of S.bolts) {
@@ -238,6 +247,16 @@ export function drawScreenFX() {
     const hue = Math.round(300 + Math.min(60, m * 12));
     ctx.fillStyle = 'hsla(' + hue + ',85%,40%,' + a.toFixed(3) + ')';
     ctx.fillRect(0, 0, W, H);
+  }
+  // Void Reaper loose: the world itself turns oppressive — heavy wash + pulsing blood vignette
+  if (game.reaper && !game.reaper.dead) {
+    ctx.fillStyle = 'rgba(24,2,20,0.34)';
+    ctx.fillRect(0, 0, W, H);
+    const pulse = 0.5 + 0.5 * Math.sin(S.elapsed * 4.5);
+    const rv = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.22, W / 2, H / 2, Math.max(W, H) * 0.7);
+    rv.addColorStop(0, 'rgba(0,0,0,0)');
+    rv.addColorStop(1, 'rgba(120,0,40,' + (0.32 + 0.16 * pulse).toFixed(3) + ')');
+    ctx.fillStyle = rv; ctx.fillRect(0, 0, W, H);
   }
   if (game.flash > 0) {
     ctx.fillStyle = 'rgba(255,40,80,' + (game.flash * 0.4).toFixed(3) + ')';

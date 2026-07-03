@@ -5,11 +5,11 @@ import { BALANCE, xpToNext } from './config.js';
 import { createRng, randomSeed } from './engine/rng.js';
 import { bus } from './engine/events.js';
 import { createSave, localStorageAdapter } from './engine/save.js';
-import { initAudio, sfx } from './engine/audio.js';
+import { initAudio, sfx, music } from './engine/audio.js';
 import { bindInput } from './engine/input.js';
 import { resetFX, updateParts, updateTexts } from './engine/particles.js';
 import { pickTier } from './content/enemies.js';
-import { initEnemySprites, spawnPos, makeEnemy, spawnBoss, spawnLogic, updateEnemies, damageEnemy } from './game/enemies.js';
+import { initEnemySprites, spawnPos, makeEnemy, spawnBoss, spawnTitan, spawnReaper, spawnLogic, updateEnemies, damageEnemy } from './game/enemies.js';
 import { initGemSprites, updateGems } from './game/gems.js';
 import { dropChest, updateChests, updateChestReveal, dismissChest, resetChests } from './game/chests.js';
 import { updateWeapons } from './game/weapons.js';
@@ -38,7 +38,9 @@ function reset() {
   });
   Object.assign(S.game, { time: 0, kills: 0, level: 1, xp: 0, next: xpToNext(1),
     spawnT: BALANCE.spawn.firstDelay, surgeT: BALANCE.spawn.surgeFirst,
-    bossAt: BALANCE.boss.firstAt, bossN: 0, boss: null,
+    bossAt: BALANCE.boss.firstAt, bossN: 0, boss: null, bossAlive: 0,
+    titanAt: BALANCE.titan.firstAt, titanN: 0, titansKilled: 0,
+    reaperAt: BALANCE.reaper.at, reaper: null, reaperSpawned: false, reaperWarned: false, reaperSlain: false,
     combo: 0, comboT: 0, comboPulse: 0, threat: 1, pendingLv: 0, lvModalAt: -1e9, overT: 0, overShown: false, flash: 0, dieT: 0 });
   S.cam.x = 0; S.cam.y = 0; S.shake = 0; S.ts = 1; S.tsT = 1; S.freeze = 0;
   ui.timer.classList.remove('warn');
@@ -52,6 +54,7 @@ function startRun(seed) {
   S.game.seed = s;
   S.state = 'play';
   ui.start.classList.add('hidden'); ui.over.classList.add('hidden'); ui.levelup.classList.add('hidden');
+  music.setMood('run');
   sfx.tick();
 }
 
@@ -65,13 +68,15 @@ function update(dt, rdt) {
   if (S.state === 'over') {
     if (!S.game.overShown) {
       S.game.overT -= rdt;
-      if (S.game.overT <= 0) showGameOver();
+      if (S.game.overT <= 0) { showGameOver(); music.setMood('menu'); }
     }
     updateParts(dt + rdt * 0.05);
     updateTexts(rdt);
     return;
   }
   S.game.time += dt;
+  // music intensifies while a super-boss is loose; the reaper gets its own darker motif
+  music.setMood(S.game.reaper && !S.game.reaper.dead ? 'reaper' : (S.game.bossAlive > 0 ? 'boss' : 'run'));
   updatePlayer(dt);
   spawnLogic(dt);
   updateEnemies(dt);
@@ -131,12 +136,15 @@ function makeDebugHandle() {
     grantXP(n) { gainXP(n == null ? 10 : n); },
     pickCard(i) { pickCard(i); },
     forceBoss() { if (S.state === 'play') spawnBoss(); },
+    forceTitan() { if (S.state === 'play') { S.game.titanN++; spawnTitan(); } },
+    forceReaper() { if (S.state === 'play' && !S.game.reaper) { S.game.reaperSpawned = true; spawnReaper(); } },
     forceChest() { if (S.state === 'play') dropChest(S.player.x + 40, S.player.y); },
     setWeapon(id, lv, evo) {
       const w = S.weapons[id];
       if (w) { w.lv = Math.max(0, Math.min(BALANCE.weapons.maxLv, lv)); w.evo = !!evo; }
     },
     killBoss() { const b = S.game.boss; if (b && !b.dead) { b.spawnT = 0; damageEnemy(b, b.hp * 2 + 1e6); } },
+    killBig() { for (const e of S.enemies.slice()) if (e.isBoss && !e.dead) { e.spawnT = 0; damageEnemy(e, e.hp * 2 + 1e6); } },
     killPlayer() { if (S.state === 'play') { S.player.inv = 0; damagePlayer(1e9); } },
     spawn(n) {
       n = n == null ? 50 : n;
@@ -151,7 +159,9 @@ function makeDebugHandle() {
     state() {
       return { state: S.state, time: S.game.time, kills: S.game.kills, level: S.game.level,
         hp: S.player.hp, enemies: S.enemies.length, seed: S.game.seed, lowFX: S.lowFX,
-        chests: S.chests.length,
+        chests: S.chests.length, bossAlive: S.game.bossAlive,
+        titanN: S.game.titanN, reaper: !!S.game.reaper, reaperSlain: S.game.reaperSlain,
+        music: music.enabled(),
         weapons: { bolt: { lv: S.weapons.bolt.lv, evo: !!S.weapons.bolt.evo },
           blade: { lv: S.weapons.blade.lv, evo: !!S.weapons.blade.evo },
           nova: { lv: S.weapons.nova.lv, evo: !!S.weapons.nova.evo } },
@@ -195,6 +205,24 @@ function mount(root, options) {
   ui.start.addEventListener('pointerdown', function () { initAudio(); if (S.state === 'start') startRun(); });
   ui.restart.addEventListener('click', function () { initAudio(); if (S.state === 'over' && S.game.overShown) startRun(); });
   ui.chest.addEventListener('pointerdown', function () { dismissChest(); });
+
+  // music toggle, persisted in the save's settings; label reflects state
+  function syncMusicBtn() {
+    const on = S.save.data.settings.music;
+    ui.music.textContent = on ? '♪ MUSIC' : '♪ MUTED';
+    ui.music.classList.toggle('off', !on);
+  }
+  music.setEnabled(S.save.data.settings.music);
+  syncMusicBtn();
+  ui.music.addEventListener('pointerdown', function (e) {
+    e.stopPropagation();
+    initAudio();
+    const on = !S.save.data.settings.music;
+    S.save.data.settings.music = on;
+    music.setEnabled(on);
+    S.save.persist();
+    syncMusicBtn();
+  });
 
   if (typeof S.options.onRunEnd === 'function') {
     bus.on('run-ended', function (payload) { S.options.onRunEnd(payload); });

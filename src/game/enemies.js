@@ -1,10 +1,11 @@
 // Enemy spawning, AI, separation, boss behavior, and kill/damage resolution.
 import { S, addShake } from '../state.js';
-import { BALANCE, enemyHpMul, enemySpdMul, enemyDmgMul, spawnInterval, bossHp, bossDmg } from '../config.js';
+import { BALANCE, enemyHpMul, enemySpdMul, enemyDmgMul, spawnInterval, bossHp, bossDmg,
+  titanHp, titanDmg, reaperHp, reaperDmg } from '../config.js';
 import { TAU, rnd, dist2 } from '../utils.js';
-import { TIERS, BOSS_STYLE, pickTier } from '../content/enemies.js';
+import { TIERS, BOSS_STYLE, TITAN_STYLE, REAPER_STYLE, pickTier } from '../content/enemies.js';
 import { bodySprite, flatSprite } from '../engine/sprites.js';
-import { burst, puff, addText, announce, addPart } from '../engine/particles.js';
+import { burst, puff, addText, announce, addPart, confetti } from '../engine/particles.js';
 import { sfx } from '../engine/audio.js';
 import { bus } from '../engine/events.js';
 import { damagePlayer } from './player.js';
@@ -14,8 +15,10 @@ import { ui } from './hud.js';
 
 export function initEnemySprites() {
   TIERS.forEach(t => { t.spr = bodySprite(t.color, t.core, t.r, t.sides, t.spike); t.flash = flatSprite(t.spr); });
-  BOSS_STYLE.spr = bodySprite(BOSS_STYLE.color, BOSS_STYLE.core, BOSS_STYLE.r, BOSS_STYLE.sides, true);
-  BOSS_STYLE.flash = flatSprite(BOSS_STYLE.spr);
+  [BOSS_STYLE, TITAN_STYLE, REAPER_STYLE].forEach(function (st) {
+    st.spr = bodySprite(st.color, st.core, st.r, st.sides, true);
+    st.flash = flatSprite(st.spr);
+  });
 }
 
 export function spawnPos(margin) {
@@ -68,19 +71,62 @@ export function spawnLogic(dt) {
     game.bossAt += BALANCE.boss.every; game.bossN++;
     spawnBoss();
   }
+  // Void Reaper: single milestone ultimate, heavily telegraphed then spawned
+  const R = BALANCE.reaper;
+  if (!game.reaperSpawned) {
+    if (!game.reaperWarned && game.time >= R.at - R.warnAt) {
+      game.reaperWarned = true;
+      announce('THE VOID REAPER AWAKENS', REAPER_STYLE.aura, R.warnAt);
+      sfx.reaperWarn();
+    }
+    if (game.time >= R.at) { game.reaperSpawned = true; spawnReaper(); }
+  }
+  // Titans: recurring super-boss every few minutes; suppressed while the reaper is loose.
+  // Relative re-arm (not absolute) so a suppressed slot never floods titans on catch-up.
+  if (game.time >= game.titanAt) {
+    if (!game.reaper) { game.titanN++; spawnTitan(); }
+    game.titanAt = game.time + BALANCE.titan.every;
+  }
+}
+
+// Shared spawner for boss/titan/reaper: same phase machine, per-kind style, HP, and scale.
+function spawnBig(kind, style, cfg, hp, dmg) {
+  const game = S.game, p = spawnPos(cfg.margin);
+  const b = makeEnemy(0, p.x, p.y);
+  const scale = cfg.rScale || 1, r = style.r * scale;
+  Object.assign(b, { isBoss: true, kind: kind, r: r, color: style.color, aura: style.aura || '#ff4030',
+    spr: style.spr, flash: style.flash, sprScale: scale,
+    hp: hp, maxhp: hp, spd: cfg.spd, dmg: dmg, xp: cfg.xp,
+    phase: 'chase', pt: cfg.firstChaseT, tx: 0, ty: 0, dvx: 0, dvy: 0, dashesLeft: 0,
+    spawnT: cfg.spawnT, rot: 0 });
+  S.enemies.push(b); game.bossAlive++;
+  return b;
 }
 
 export function spawnBoss() {
-  const game = S.game, B = BALANCE.boss, m = game.time / 60, p = spawnPos(B.margin);
-  const b = makeEnemy(0, p.x, p.y);
-  Object.assign(b, { isBoss: true, r: BOSS_STYLE.r, color: BOSS_STYLE.color, spr: BOSS_STYLE.spr, flash: BOSS_STYLE.flash,
-    hp: bossHp(game.bossN, m), spd: B.spd, dmg: bossDmg(m), xp: B.xp,
-    phase: 'chase', pt: B.firstChaseT, tx: 0, ty: 0, dvx: 0, dvy: 0, spawnT: B.spawnT, rot: 0 });
-  b.maxhp = b.hp;
-  S.enemies.push(b); game.boss = b;
+  const game = S.game, m = game.time / 60;
+  const b = spawnBig('boss', BOSS_STYLE, BALANCE.boss, bossHp(game.bossN, m), bossDmg(m));
+  game.boss = b;
   announce('BOSS INCOMING', '#ff5a7a', 2.4);
   sfx.boss(); addShake(8);
   bus.emit('boss-spawned', { n: game.bossN, time: game.time });
+}
+
+export function spawnTitan() {
+  const game = S.game, m = game.time / 60;
+  spawnBig('titan', TITAN_STYLE, BALANCE.titan, titanHp(game.titanN, m), titanDmg(m));
+  announce('TITAN RISES', TITAN_STYLE.aura, 2.8);
+  sfx.titan(); addShake(14);
+  bus.emit('titan-spawned', { n: game.titanN, time: game.time });
+}
+
+export function spawnReaper() {
+  const game = S.game, m = game.time / 60;
+  const b = spawnBig('reaper', REAPER_STYLE, BALANCE.reaper, reaperHp(m), reaperDmg(m));
+  game.reaper = b;
+  announce('VOID REAPER', REAPER_STYLE.aura, 3.2);
+  sfx.reaper(); addShake(22); game.flash = 0.6;
+  bus.emit('reaper-spawned', { time: game.time });
 }
 
 export function updateEnemies(dt) {
@@ -140,18 +186,18 @@ function separate() {
 }
 
 function updateBoss(b, dt) {
-  const B = BALANCE.boss, player = S.player;
+  const B = BALANCE[b.kind] || BALANCE.boss, player = S.player;
   b.pt -= dt;
   if (b.phase === 'chase') {
     const dx = player.x - b.x, dy = player.y - b.y, d = Math.hypot(dx, dy) || 1;
     b.x += dx / d * b.spd * dt; b.y += dy / d * b.spd * dt;
-    if (b.pt <= 0) { b.phase = 'tele'; b.pt = B.teleT; b.tx = player.x; b.ty = player.y; sfx.dash(); }
+    if (b.pt <= 0) { b.dashesLeft = B.dashes || 1; enterTele(b, B); }
   } else if (b.phase === 'tele') {
     // charge-up: sparks pull inward toward the boss (cosmetic randomness)
     if (Math.random() < dt * 30) {
       const a = rnd(0, TAU), r = b.r * 3;
       addPart({ t: 'glow', x: b.x + Math.cos(a) * r, y: b.y + Math.sin(a) * r, vx: -Math.cos(a) * r * 2.4, vy: -Math.sin(a) * r * 2.4,
-        life: 0.4, max: 0.4, size: 7, color: '#ff6a5a', drag: 0 });
+        life: 0.4, max: 0.4, size: 7, color: b.aura, drag: 0 });
     }
     if (b.pt <= 0) {
       b.phase = 'dash'; b.pt = B.dashT;
@@ -163,11 +209,13 @@ function updateBoss(b, dt) {
     puff(b.x + rnd(-8, 8), b.y + rnd(-8, 8), b.color, b.r * 1.1, 0.3);
     const reached = dist2(b.x, b.y, b.tx, b.ty) < B.dashReach * B.dashReach;
     if (reached || b.pt <= 0) {
-      b.phase = 'recover'; b.pt = B.recoverT;
-      addShake(11); sfx.dash();
-      burst(b.x, b.y, '#ff6a5a', 16, 320, 4, 0.5);
+      addShake(b.kind === 'boss' ? 11 : 15); sfx.dash();
+      burst(b.x, b.y, b.aura, 16, 320, 4, 0.5);
       // landing shockwave clips the player if close
       if (!player.dead && dist2(b.x, b.y, player.x, player.y) < B.shockR * B.shockR) damagePlayer(b.dmg * B.shockDmgMul);
+      // multi-dash: super-bosses re-aim and lunge again before recovering
+      if (--b.dashesLeft > 0) enterTele(b, B, B.dashGapT);
+      else { b.phase = 'recover'; b.pt = B.recoverT; }
     }
   } else { // recover
     const dx = player.x - b.x, dy = player.y - b.y, d = Math.hypot(dx, dy) || 1;
@@ -175,6 +223,13 @@ function updateBoss(b, dt) {
     if (b.pt <= 0) { b.phase = 'chase'; b.pt = B.chaseT; }
   }
   b.rot += dt * 0.7;
+}
+
+// Lock the dash target on the player and enter the charge-up phase.
+function enterTele(b, B, teleT) {
+  b.phase = 'tele'; b.pt = teleT != null ? teleT : B.teleT;
+  b.tx = S.player.x; b.ty = S.player.y;
+  sfx.dash();
 }
 
 export function nearestEnemy(x, y, maxD) {
@@ -209,16 +264,24 @@ function onKill(e) {
   burst(e.x, e.y, e.color, e.isBoss ? 46 : (big ? 18 : 10), e.isBoss ? 420 : 260, e.isBoss ? 6 : 3.5, e.isBoss ? 1 : 0.6);
   puff(e.x, e.y, e.color, e.r * 2.2, 0.35);
   if (e.isBoss) {
-    game.boss = null;
-    announce('BOSS DOWN', '#ffe066', 2.2);
-    for (let i = 0; i < B.gemCount; i++) {
-      const a = i / B.gemCount * TAU;
-      dropGem(e.x + Math.cos(a) * S.rng.range(B.gemRingMin, B.gemRingMax), e.y + Math.sin(a) * S.rng.range(B.gemRingMin, B.gemRingMax), B.gemValue);
+    const kind = e.kind || 'boss', cfg = BALANCE[kind] || B;
+    game.bossAlive = Math.max(0, game.bossAlive - 1);
+    if (kind === 'boss') { game.boss = null; announce('BOSS DOWN', '#ffe066', 2.2); }
+    else if (kind === 'titan') { game.titansKilled++; announce('TITAN FELLED', '#ffe066', 2.6); bus.emit('titan-killed', { n: game.titansKilled, time: game.time }); }
+    else if (kind === 'reaper') {
+      game.reaper = null; game.reaperSlain = true; game.flash = 0.8; addShake(24);
+      announce('THE REAPER IS SLAIN', '#c06bff', 3.4);
+      confetti(e.x, e.y); sfx.evolve();
+      bus.emit('reaper-killed', { time: game.time });
     }
-    S.player.hp = Math.min(S.stats.maxhp, S.player.hp + B.killHeal);
+    for (let i = 0; i < cfg.gemCount; i++) {
+      const a = i / cfg.gemCount * TAU;
+      dropGem(e.x + Math.cos(a) * S.rng.range(cfg.gemRingMin, cfg.gemRingMax), e.y + Math.sin(a) * S.rng.range(cfg.gemRingMin, cfg.gemRingMax), cfg.gemValue);
+    }
+    S.player.hp = Math.min(S.stats.maxhp, S.player.hp + cfg.killHeal);
     dropChest(e.x, e.y);
   } else {
     dropGem(e.x, e.y, e.xp);
   }
-  bus.emit('enemy-killed', { tier: e.tier, isBoss: e.isBoss, xp: e.xp, x: e.x, y: e.y, combo: game.combo });
+  bus.emit('enemy-killed', { tier: e.tier, isBoss: e.isBoss, kind: e.kind || null, xp: e.xp, x: e.x, y: e.y, combo: game.combo });
 }

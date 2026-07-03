@@ -31,7 +31,26 @@ test('persist writes one key and removes the legacy keys', () => {
   assert.equal(adapter.get('nv_bestT'), null);
   assert.equal(adapter.get('nv_bestK'), null);
   const stored = JSON.parse(adapter.get(SAVE_KEY));
-  assert.deepEqual(stored, { v: 2, best: { time: 123, kills: 45 } });
+  assert.deepEqual(stored, { v: 3, best: { time: 123, kills: 45 }, settings: { music: true } });
+});
+
+test('v2 blob migrates to v3, adding default settings without touching bests', () => {
+  const blob = JSON.stringify({ v: 2, best: { time: 300, kills: 88 } });
+  const save = createSave(memAdapter({ [SAVE_KEY]: blob }));
+  assert.equal(save.data.v, 3);
+  assert.deepEqual(save.data.best, { time: 300, kills: 88 });
+  assert.equal(save.data.settings.music, true);
+});
+
+test('music setting round-trips and corrupt settings sanitize to on', () => {
+  const adapter = memAdapter();
+  const save = createSave(adapter);
+  save.data.settings.music = false;
+  save.persist();
+  assert.equal(createSave(adapter).data.settings.music, false);
+  // a blob with a non-boolean music flag falls back to on
+  const bad = JSON.stringify({ v: 3, best: { time: 1, kills: 1 }, settings: { music: 'yes' } });
+  assert.equal(createSave(memAdapter({ [SAVE_KEY]: bad })).data.settings.music, true);
 });
 
 test('corrupt blob falls back to legacy keys, never loses progress', () => {

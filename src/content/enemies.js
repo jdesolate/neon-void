@@ -10,6 +10,9 @@ export const TIERS = [
 ];
 
 export const BOSS_STYLE = { r: 34, color: '#ff3b3b', core: '#ffd3c9', sides: 12, spike: true };
+// Grim super-bosses: dark, desaturated palettes so they read as wrong/threatening.
+export const TITAN_STYLE = { r: 34, color: '#8f1230', core: '#ff5a6e', sides: 8, spike: true, aura: '#ff2d4a' };
+export const REAPER_STYLE = { r: 34, color: '#2a0f3d', core: '#c06bff', sides: 14, spike: true, aura: '#b026ff' };
 
 // Pure tier pick: takes elapsed run time and one RNG roll so it is seed-testable.
 export function pickTier(time, r) {

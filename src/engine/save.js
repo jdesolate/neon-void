@@ -1,7 +1,8 @@
 // Versioned save behind a storage adapter. One key, JSON blob, migration chain on load.
-// v1 was two raw localStorage keys (nv_bestT / nv_bestK); v2 is { v: 2, best: { time, kills } }.
+// v1 was two raw localStorage keys (nv_bestT / nv_bestK); v2 is { v: 2, best: { time, kills } };
+// v3 adds { settings: { music } } for the audio toggle.
 export const SAVE_KEY = 'nv_save';
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 const LEGACY_KEYS = { time: 'nv_bestT', kills: 'nv_bestK' };
 
 export function localStorageAdapter() {
@@ -12,8 +13,12 @@ export function localStorageAdapter() {
   };
 }
 
+export function defaultSettings() {
+  return { music: true };
+}
+
 export function defaultSave() {
-  return { v: SCHEMA_VERSION, best: { time: 0, kills: 0 } };
+  return { v: SCHEMA_VERSION, best: { time: 0, kills: 0 }, settings: defaultSettings() };
 }
 
 function num(v) { const n = +v; return Number.isFinite(n) && n > 0 ? n : 0; }
@@ -23,7 +28,10 @@ function readLegacy(adapter) {
 }
 
 // Each entry upgrades from its key's version to the next; run in sequence up to current.
-const MIGRATIONS = {};
+const MIGRATIONS = {
+  // v2 -> v3: introduce audio settings, music on by default. Additive, never wipes bests.
+  2(data) { return { v: 3, best: data.best, settings: defaultSettings() }; },
+};
 
 function migrateChain(data) {
   let v = data.v;
@@ -46,6 +54,8 @@ function load(adapter) {
         if (migrated) {
           migrated.best.time = num(migrated.best.time);
           migrated.best.kills = num(migrated.best.kills);
+          if (!migrated.settings || typeof migrated.settings !== 'object') migrated.settings = defaultSettings();
+          if (typeof migrated.settings.music !== 'boolean') migrated.settings.music = true;
           return migrated;
         }
       }
