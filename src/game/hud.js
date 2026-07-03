@@ -11,7 +11,8 @@ export const ui = {
   combo: $('combo'), comboX: $('comboX'), start: $('start'), bestLine: $('bestLine'), levelup: $('levelup'), cards: $('cards'),
   over: $('over'), nbTime: $('nbTime'), nbKills: $('nbKills'), goTime: $('goTime'), goKills: $('goKills'), goGold: $('goGold'), goBest: $('goBest'), restart: $('restartBtn'),
   chest: $('chest'), chestSlot: $('chestSlot'), chestIcon: $('chestIcon'), chestName: $('chestName'), chestDesc: $('chestDesc'), chestHint: $('chestHint'),
-  music: $('musicBtn'), gold: $('gold'), walletLine: $('walletLine'),
+  music: $('musicBtn'), sfxBtn: $('sfxBtn'), pause: $('pause'), pauseBtn: $('pauseBtn'), resume: $('resumeBtn'),
+  gold: $('gold'), walletLine: $('walletLine'),
   shop: $('shop'), shopBtn: $('shopBtn'), shopClose: $('shopClose'), shopItems: $('shopItems'), shopWallet: $('shopWallet'),
 };
 

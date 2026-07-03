@@ -31,27 +31,48 @@ test('persist writes one key and removes the legacy keys', () => {
   assert.equal(adapter.get('nv_bestT'), null);
   assert.equal(adapter.get('nv_bestK'), null);
   const stored = JSON.parse(adapter.get(SAVE_KEY));
-  assert.deepEqual(stored, { v: 4, best: { time: 123, kills: 45 }, settings: { music: true }, gold: 0, shop: {} });
+  assert.deepEqual(stored, { v: 5, best: { time: 123, kills: 45 }, settings: { music: true, sfx: true }, gold: 0, shop: {} });
 });
 
-test('v2 blob migrates through the chain to v4 without touching bests', () => {
+test('v2 blob migrates through the chain to v5 without touching bests', () => {
   const blob = JSON.stringify({ v: 2, best: { time: 300, kills: 88 } });
   const save = createSave(memAdapter({ [SAVE_KEY]: blob }));
-  assert.equal(save.data.v, 4);
+  assert.equal(save.data.v, 5);
   assert.deepEqual(save.data.best, { time: 300, kills: 88 });
   assert.equal(save.data.settings.music, true);
+  assert.equal(save.data.settings.sfx, true);
   assert.equal(save.data.gold, 0);
   assert.deepEqual(save.data.shop, {});
 });
 
-test('v3 blob migrates to v4, adding an empty wallet and keeping settings', () => {
+test('v3 blob migrates onward, adding an empty wallet and keeping settings', () => {
   const blob = JSON.stringify({ v: 3, best: { time: 300, kills: 88 }, settings: { music: false } });
   const save = createSave(memAdapter({ [SAVE_KEY]: blob }));
-  assert.equal(save.data.v, 4);
+  assert.equal(save.data.v, 5);
   assert.deepEqual(save.data.best, { time: 300, kills: 88 });
   assert.equal(save.data.settings.music, false);
   assert.equal(save.data.gold, 0);
   assert.deepEqual(save.data.shop, {});
+});
+
+test('v4 blob migrates to v5, adding the sfx flag and keeping wallet, ranks, and music', () => {
+  const blob = JSON.stringify({ v: 4, best: { time: 300, kills: 88 }, settings: { music: false }, gold: 240, shop: { hull: 3 } });
+  const save = createSave(memAdapter({ [SAVE_KEY]: blob }));
+  assert.equal(save.data.v, 5);
+  assert.equal(save.data.settings.music, false);
+  assert.equal(save.data.settings.sfx, true);
+  assert.equal(save.data.gold, 240);
+  assert.deepEqual(save.data.shop, { hull: 3 });
+});
+
+test('sfx setting round-trips and corrupt sfx sanitizes to on', () => {
+  const adapter = memAdapter();
+  const save = createSave(adapter);
+  save.data.settings.sfx = false;
+  save.persist();
+  assert.equal(createSave(adapter).data.settings.sfx, false);
+  const bad = JSON.stringify({ v: 5, best: { time: 1, kills: 1 }, settings: { music: true, sfx: 'loud' }, gold: 0, shop: {} });
+  assert.equal(createSave(memAdapter({ [SAVE_KEY]: bad })).data.settings.sfx, true);
 });
 
 test('gold wallet and shop ranks round-trip through persist', () => {

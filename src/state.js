@@ -1,6 +1,6 @@
 // All mutable run/session state in one shared object so modules stay import-cycle-safe.
 export const S = {
-  state: 'start',              // start | shop | play | level | chest | over
+  state: 'start',              // start | shop | play | pause | level | chest | over
   ts: 1, tsT: 1, freeze: 0,    // timescale, target, hit-stop seconds
   shake: 0,
   elapsed: 0, frameAvg: 16, lowFX: false,

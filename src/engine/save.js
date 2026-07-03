@@ -1,8 +1,9 @@
 // Versioned save behind a storage adapter. One key, JSON blob, migration chain on load.
 // v1 was two raw localStorage keys (nv_bestT / nv_bestK); v2 is { v: 2, best: { time, kills } };
-// v3 adds { settings: { music } } for the audio toggle; v4 adds { gold, shop } for the meta economy.
+// v3 adds { settings: { music } } for the audio toggle; v4 adds { gold, shop } for the meta
+// economy; v5 adds { settings: { sfx } } for the SFX toggle.
 export const SAVE_KEY = 'nv_save';
-export const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 5;
 const LEGACY_KEYS = { time: 'nv_bestT', kills: 'nv_bestK' };
 
 export function localStorageAdapter() {
@@ -14,7 +15,7 @@ export function localStorageAdapter() {
 }
 
 export function defaultSettings() {
-  return { music: true };
+  return { music: true, sfx: true };
 }
 
 export function defaultSave() {
@@ -33,6 +34,8 @@ const MIGRATIONS = {
   2(data) { return { v: 3, best: data.best, settings: defaultSettings() }; },
   // v3 -> v4: introduce the gold wallet and meta-shop ranks. Additive, never wipes bests.
   3(data) { return { v: 4, best: data.best, settings: data.settings, gold: 0, shop: {} }; },
+  // v4 -> v5: introduce the SFX toggle, on by default. Additive, never wipes bests.
+  4(data) { return { v: 5, best: data.best, settings: Object.assign({}, data.settings, { sfx: true }), gold: data.gold, shop: data.shop }; },
 };
 
 function migrateChain(data) {
@@ -58,6 +61,7 @@ function load(adapter) {
           migrated.best.kills = num(migrated.best.kills);
           if (!migrated.settings || typeof migrated.settings !== 'object') migrated.settings = defaultSettings();
           if (typeof migrated.settings.music !== 'boolean') migrated.settings.music = true;
+          if (typeof migrated.settings.sfx !== 'boolean') migrated.settings.sfx = true;
           migrated.gold = Math.floor(num(migrated.gold));
           const shop = {};
           if (migrated.shop && typeof migrated.shop === 'object') {

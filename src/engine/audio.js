@@ -1,5 +1,9 @@
 // WebAudio SFX + procedural BGM, gesture-gated: initAudio only does work after a user gesture resumes the context.
-let AC = null, master = null, lastHitSfx = 0, lastCoinSfx = 0;
+let AC = null, master = null, lastHitSfx = 0, lastCoinSfx = 0, sfxOn = true;
+
+// SFX mute is independent of the music toggle: tone() is the SFX-only path (music has musicGain).
+export function setSfxEnabled(on) { sfxOn = !!on; }
+export function sfxEnabled() { return sfxOn; }
 
 export function initAudio() {
   try {
@@ -15,7 +19,7 @@ export function initAudio() {
 }
 
 function tone(f0, f1, dur, type, vol, delay) {
-  if (!AC || AC.state !== 'running') return;
+  if (!sfxOn || !AC || AC.state !== 'running') return;
   const t = AC.currentTime + (delay || 0);
   const o = AC.createOscillator(), g = AC.createGain();
   o.type = type; o.frequency.setValueAtTime(Math.max(1, f0), t);

@@ -5,7 +5,7 @@ import { BALANCE, xpToNext } from './config.js';
 import { createRng, randomSeed } from './engine/rng.js';
 import { bus } from './engine/events.js';
 import { createSave, localStorageAdapter } from './engine/save.js';
-import { initAudio, sfx, music } from './engine/audio.js';
+import { initAudio, sfx, music, setSfxEnabled, sfxEnabled } from './engine/audio.js';
 import { bindInput } from './engine/input.js';
 import { resetFX, updateParts, updateTexts } from './engine/particles.js';
 import { pickTier } from './content/enemies.js';
@@ -67,8 +67,24 @@ function startRun(seed) {
   sfx.tick();
 }
 
+/* ---------- pause ---------- */
+// Only 'play' pauses; the modal states (level/chest) already gate on input.
+function pauseGame() {
+  if (S.state !== 'play') return;
+  S.state = 'pause';
+  music.setMood('menu');
+  ui.pause.classList.remove('hidden');
+}
+
+function resumeGame() {
+  if (S.state !== 'pause') return;
+  S.state = 'play';
+  ui.pause.classList.add('hidden');
+}
+
 /* ---------- main update ---------- */
 function update(dt, rdt) {
+  if (S.state === 'pause') return;
   if (S.state === 'start' || S.state === 'shop') {
     S.cam.x += 18 * rdt; S.cam.y += 6 * rdt; // idle drift behind the menu
     updateParts(rdt);
@@ -157,6 +173,8 @@ function makeDebugHandle() {
     killBig() { for (const e of S.enemies.slice()) if (e.isBoss && !e.dead) { e.spawnT = 0; damageEnemy(e, e.hp * 2 + 1e6); } },
     killPlayer() { if (S.state === 'play') { S.player.inv = 0; damagePlayer(1e9); } },
     grantGold(n) { grantGold(n == null ? 100 : n); },
+    pause() { pauseGame(); },
+    resume() { resumeGame(); },
     spawn(n) {
       n = n == null ? 50 : n;
       for (let i = 0; i < n && S.enemies.length < BALANCE.spawn.cap; i++) {
@@ -173,7 +191,7 @@ function makeDebugHandle() {
         gold: Math.floor(S.game.gold), wallet: S.save.data.gold, shop: Object.assign({}, S.save.data.shop),
         coins: S.coins.length, chests: S.chests.length, bossAlive: S.game.bossAlive,
         titanN: S.game.titanN, reaper: !!S.game.reaper, reaperSlain: S.game.reaperSlain,
-        music: music.enabled(),
+        music: music.enabled(), sfxOn: sfxEnabled(),
         weapons: { bolt: { lv: S.weapons.bolt.lv, evo: !!S.weapons.bolt.evo },
           blade: { lv: S.weapons.blade.lv, evo: !!S.weapons.blade.evo },
           nova: { lv: S.weapons.nova.lv, evo: !!S.weapons.nova.evo } },
@@ -203,6 +221,11 @@ function mount(root, options) {
 
   bindInput(S.cv, {
     onKeyAction(code) {
+      if (S.state === 'pause') {
+        if (code === 'Escape' || code === 'Enter' || code === 'NumpadEnter' || code === 'Space') resumeGame();
+        return;
+      }
+      if (S.state === 'play') { if (code === 'Escape') pauseGame(); return; }
       if (S.state === 'shop') { if (code === 'Escape') closeShop(); return; }
       if (S.state === 'start') { startRun(); return; }
       if (S.state === 'over' && S.game.overShown) { startRun(); return; }
@@ -215,6 +238,7 @@ function mount(root, options) {
     },
     onPrimaryTouch() {
       if (S.state === 'start') { startRun(); return true; }
+      if (S.state === 'pause') return true; // no joystick while paused; RESUME is the way back
       return false;
     },
   });
@@ -222,14 +246,22 @@ function mount(root, options) {
   ui.restart.addEventListener('click', function () { initAudio(); if (S.state === 'over' && S.game.overShown) startRun(); });
   ui.chest.addEventListener('pointerdown', function () { dismissChest(); });
 
-  // music toggle, persisted in the save's settings; label reflects state
-  function syncMusicBtn() {
-    const on = S.save.data.settings.music;
-    ui.music.textContent = on ? '♪ MUSIC' : '♪ MUTED';
-    ui.music.classList.toggle('off', !on);
+  // pause: pill during play, RESUME on the overlay, auto-pause when focus leaves the game
+  ui.pauseBtn.addEventListener('pointerdown', function (e) { e.stopPropagation(); initAudio(); pauseGame(); });
+  ui.resume.addEventListener('click', function () { resumeGame(); });
+  window.addEventListener('blur', function () { pauseGame(); });
+
+  // music/SFX toggles, persisted in the save's settings; labels reflect state
+  function syncAudioBtns() {
+    const st = S.save.data.settings;
+    ui.music.textContent = st.music ? '♪ MUSIC' : '♪ MUTED';
+    ui.music.classList.toggle('off', !st.music);
+    ui.sfxBtn.textContent = st.sfx ? '✦ SFX' : '✦ MUTED';
+    ui.sfxBtn.classList.toggle('off', !st.sfx);
   }
   music.setEnabled(S.save.data.settings.music);
-  syncMusicBtn();
+  setSfxEnabled(S.save.data.settings.sfx);
+  syncAudioBtns();
   ui.music.addEventListener('pointerdown', function (e) {
     e.stopPropagation();
     initAudio();
@@ -237,14 +269,24 @@ function mount(root, options) {
     S.save.data.settings.music = on;
     music.setEnabled(on);
     S.save.persist();
-    syncMusicBtn();
+    syncAudioBtns();
+  });
+  ui.sfxBtn.addEventListener('pointerdown', function (e) {
+    e.stopPropagation();
+    initAudio();
+    const on = !S.save.data.settings.sfx;
+    S.save.data.settings.sfx = on;
+    setSfxEnabled(on);
+    S.save.persist();
+    syncAudioBtns();
   });
 
   if (typeof S.options.onRunEnd === 'function') {
     bus.on('run-ended', function (payload) { S.options.onRunEnd(payload); });
   }
   document.addEventListener('visibilitychange', function () {
-    if (!document.hidden) { last = performance.now(); initAudio(); }
+    if (document.hidden) { pauseGame(); return; }
+    last = performance.now(); initAudio();
   });
 
   reset();
