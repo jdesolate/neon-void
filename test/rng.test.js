@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createRng } from '../src/engine/rng.js';
 import { pickTier } from '../src/content/enemies.js';
+import { rollUpgrades } from '../src/content/upgrades.js';
 
 test('same seed produces the same sequence', () => {
   const a = createRng(12345), b = createRng(12345);
@@ -42,15 +43,12 @@ test('same seed yields the same first N tier-pick decisions', () => {
 });
 
 test('same seed yields the same first N upgrade rolls', () => {
-  // mirrors buildCards: splice 3 picks out of the eligible pool by rng.int
-  function roll(rng, ids) {
-    const pool = ids.slice(), out = [];
-    while (out.length < 3 && pool.length > 0) out.push(pool.splice(rng.int(pool.length), 1)[0]);
-    return out;
-  }
   const ids = ['blade', 'bolt', 'nova', 'power', 'rapid', 'swift', 'vital', 'regen', 'magnet', 'crit', 'wisdom', 'combo'];
+  const pool = ids.map(id => ({ id }));
   const a = createRng(555), b = createRng(555);
-  for (let i = 0; i < 20; i++) assert.deepEqual(roll(a, ids), roll(b, ids));
+  for (let i = 0; i < 20; i++) {
+    assert.deepEqual(rollUpgrades(pool, a).map(u => u.id), rollUpgrades(pool, b).map(u => u.id));
+  }
 });
 
 test('pickTier respects time gates regardless of roll', () => {

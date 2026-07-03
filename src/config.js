@@ -4,16 +4,23 @@ export const BALANCE = {
     r: 13, maxhp: 100, spd: 235, regen: 0, magnet: 90, crit: 0.05, critMult: 2,
     xpgain: 1, comboWin: 2.5, hurtInv: 0.8, levelupInv: 1,
   },
-  xp: { base: 4, perLevel: 3, pow: 1.3 },
+  xp: { base: 4, perLevel: 3, pow: 1.5 },
+  // innate growth per player level: linear from base, never compounding
+  innate: { dmgPerLevel: 0.015, aspdPerLevel: 0.02 },
+  levelup: { modalCooldown: 4 },
   combo: { maxStack: 50, multPer: 0.02 },
   spawn: {
-    firstDelay: 0.5, baseInterval: 1.0, intervalPerMin: 0.15, minInterval: 0.13, cap: 230,
+    firstDelay: 0.5, baseInterval: 1.1, minInterval: 0.13, cap: 230,
+    earlyUntilMin: 1, earlyPerMin: 0.06, intervalPerMin: 0.15, steepAfterMin: 3, steepPerMin: 0.10,
     surgeFirst: 14, surgePeriod: 25, surgeBase: 8, surgePerThreat: 2, surgeMax: 26,
     surgeRingMin: 40, surgeRingMax: 120,
     threatEvery: 30, margin: 60,
   },
   tierUnlock: { t3Time: 200, t3Chance: 0.10, t2Time: 100, t2Chance: 0.22, t1Time: 40, t1Chance: 0.42 },
-  enemyScale: { hpPerMin: 0.6, hpPerMinSq: 0.1, spdPerMin: 0.06, spdCap: 0.5, dmgPerMin: 0.12, spdJitterMin: 0.9, spdJitterMax: 1.1 },
+  enemyScale: {
+    hpPerMin: 0.6, hpPerMinSq: 0.1, hpCompoundAfterMin: 8, hpCompoundPerMin: 1.3,
+    spdPerMin: 0.06, spdCap: 0.5, dmgPerMin: 0.12, spdJitterMin: 0.9, spdJitterMax: 1.1,
+  },
   boss: {
     firstAt: 60, every: 60, warnAt: 5, margin: 120, spawnT: 0.6,
     baseHp: 380, hpPerBoss: 0.85, hpPerMin: 0.3, spd: 46, dmg: 22, dmgPerMin: 0.1, xp: 40,
@@ -23,8 +30,8 @@ export const BALANCE = {
   weapons: {
     maxLv: 5,
     bolt: {
-      startLv: 1, startT: 0.4, baseInterval: 0.85, intervalPerLv: 0.06, minInterval: 0.28,
-      baseDmg: 10, dmgPerLv: 4, speed: 520, spread: 0.14, life: 1.7, range: 900,
+      startLv: 1, startT: 0.4, baseInterval: 0.45, intervalPerLv: 0.024, minInterval: 0.18,
+      baseDmg: 7, dmgPerLv: 3, speed: 520, spread: 0.14, life: 1.7, range: 900,
       homingLv: 4, homingRange: 420, homingTurn: 6, retryT: 0.12,
     },
     blade: {
@@ -50,7 +57,11 @@ export function xpToNext(level) {
   return Math.floor(BALANCE.xp.base + level * BALANCE.xp.perLevel + Math.pow(level, BALANCE.xp.pow));
 }
 export function enemyHpMul(min) {
-  const s = BALANCE.enemyScale; return 1 + min * s.hpPerMin + min * min * s.hpPerMinSq;
+  const s = BALANCE.enemyScale;
+  let m = 1 + min * s.hpPerMin + min * min * s.hpPerMinSq;
+  // late-game compounding so the world re-catches uncapped player builds
+  if (min > s.hpCompoundAfterMin) m *= Math.pow(s.hpCompoundPerMin, min - s.hpCompoundAfterMin);
+  return m;
 }
 export function enemySpdMul(min) {
   const s = BALANCE.enemyScale; return 1 + Math.min(s.spdCap, min * s.spdPerMin);
@@ -59,7 +70,12 @@ export function enemyDmgMul(min) {
   return 1 + min * BALANCE.enemyScale.dmgPerMin;
 }
 export function spawnInterval(min) {
-  const s = BALANCE.spawn; return Math.max(s.minInterval, s.baseInterval - min * s.intervalPerMin);
+  // piecewise ramp: gentle first minute, normal slope after, extra slope past minute 3
+  const s = BALANCE.spawn;
+  let t = s.baseInterval - Math.min(min, s.earlyUntilMin) * s.earlyPerMin;
+  if (min > s.earlyUntilMin) t -= (min - s.earlyUntilMin) * s.intervalPerMin;
+  if (min > s.steepAfterMin) t -= (min - s.steepAfterMin) * s.steepPerMin;
+  return Math.max(s.minInterval, t);
 }
 export function bossHp(bossN, min) {
   const b = BALANCE.boss; return b.baseHp * (1 + (bossN - 1) * b.hpPerBoss) * (1 + min * b.hpPerMin);
@@ -69,4 +85,10 @@ export function bossDmg(min) {
 }
 export function comboMult(combo) {
   const c = BALANCE.combo; return 1 + Math.min(combo, c.maxStack) * c.multPer;
+}
+export function innateDmgMul(level) {
+  return 1 + (level - 1) * BALANCE.innate.dmgPerLevel;
+}
+export function innateAspdMul(level) {
+  return 1 + (level - 1) * BALANCE.innate.aspdPerLevel;
 }

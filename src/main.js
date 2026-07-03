@@ -37,7 +37,7 @@ function reset() {
   Object.assign(S.game, { time: 0, kills: 0, level: 1, xp: 0, next: xpToNext(1),
     spawnT: BALANCE.spawn.firstDelay, surgeT: BALANCE.spawn.surgeFirst,
     bossAt: BALANCE.boss.firstAt, bossN: 0, boss: null,
-    combo: 0, comboT: 0, comboPulse: 0, threat: 1, pendingLv: 0, overT: 0, overShown: false, flash: 0, dieT: 0 });
+    combo: 0, comboT: 0, comboPulse: 0, threat: 1, pendingLv: 0, lvModalAt: -1e9, overT: 0, overShown: false, flash: 0, dieT: 0 });
   S.cam.x = 0; S.cam.y = 0; S.shake = 0; S.ts = 1; S.tsT = 1; S.freeze = 0;
   ui.timer.classList.remove('warn');
   updateHUD(true);

@@ -47,6 +47,7 @@ export function spawnLogic(dt) {
   if (game.surgeT <= 0) {
     game.surgeT = SP.surgePeriod;
     const n = Math.min(SP.surgeMax, SP.surgeBase + game.threat * SP.surgePerThreat);
+    if (n > 0 && enemies.length < SP.cap) { announce('SURGE INCOMING', '#ff9d3b', 1.5); sfx.tick(); }
     for (let i = 0; i < n; i++) {
       if (enemies.length >= SP.cap) break;
       const a = i / n * TAU, d = Math.hypot(S.W, S.H) / 2 + S.rng.range(SP.surgeRingMin, SP.surgeRingMax);

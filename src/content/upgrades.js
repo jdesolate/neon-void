@@ -37,3 +37,22 @@ export const UPS = [
   { id: 'combo', icon: '∞', col: '#ff9d3b', name: 'Adrenaline', desc: function () { return '+0.8s combo window'; },
     lv: null, can: function () { return S.stats.comboWin < U.comboWinCap; }, app: function () { S.stats.comboWin += U.comboWin; } },
 ];
+
+// Cards that scale damage output; every 3-card offer must contain at least one.
+export const OFFENSIVE = new Set(['bolt', 'blade', 'nova', 'power', 'rapid']);
+
+// Pure seeded roll over a pre-filtered pool: one guaranteed offensive card,
+// no duplicates, seeded shuffle so the guaranteed card is not always first.
+export function rollUpgrades(pool, rng) {
+  const picks = [];
+  const off = pool.filter(function (u) { return OFFENSIVE.has(u.id); });
+  if (off.length > 0) picks.push(off[rng.int(off.length)]);
+  const rest = pool.filter(function (u) { return picks.indexOf(u) === -1; });
+  while (picks.length < 3 && rest.length > 0) {
+    picks.push(rest.splice(rng.int(rest.length), 1)[0]);
+  }
+  for (let i = picks.length - 1; i > 0; i--) {
+    const j = rng.int(i + 1); const t = picks[i]; picks[i] = picks[j]; picks[j] = t;
+  }
+  return picks;
+}

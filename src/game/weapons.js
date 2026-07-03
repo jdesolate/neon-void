@@ -1,6 +1,6 @@
 // Weapon runtimes: Pulse Bolt, Orbital Blades, Void Nova.
 import { S } from '../state.js';
-import { BALANCE } from '../config.js';
+import { BALANCE, innateDmgMul, innateAspdMul } from '../config.js';
 import { boltStats, bladeStats, novaStats } from '../content/weapons.js';
 import { TAU, clamp, dist2 } from '../utils.js';
 import { burst, puff } from '../engine/particles.js';
@@ -10,11 +10,14 @@ import { nearestEnemy, damageEnemy } from './enemies.js';
 export function updateWeapons(dt) {
   const player = S.player, stats = S.stats, enemies = S.enemies, bolts = S.bolts, novas = S.novas;
   const WB = BALANCE.weapons;
+  // innate per-player-level growth stacks multiplicatively with picked stats
+  const aspd = stats.aspd * innateAspdMul(S.game.level);
+  const dmgMul = stats.dmg * innateDmgMul(S.game.level);
 
   // --- Pulse Bolt: straight shot -> multishot -> homing, tier colors ---
   const bo = S.weapons.bolt;
   if (bo.lv > 0) {
-    bo.t -= dt * stats.aspd;
+    bo.t -= dt * aspd;
     if (bo.t <= 0) {
       const tgt = nearestEnemy(player.x, player.y, WB.bolt.range);
       if (tgt) {
@@ -24,7 +27,7 @@ export function updateWeapons(dt) {
         for (let i = 0; i < st.count; i++) {
           const a = base + (i - (st.count - 1) / 2) * WB.bolt.spread;
           bolts.push({ x: player.x, y: player.y, vx: Math.cos(a) * WB.bolt.speed, vy: Math.sin(a) * WB.bolt.speed,
-            dmg: st.dmg * stats.dmg, r: st.r,
+            dmg: st.dmg * dmgMul, r: st.r,
             homing: st.homing, life: WB.bolt.life, trailT: 0,
             color: st.color });
         }
@@ -64,11 +67,11 @@ export function updateWeapons(dt) {
   const bl = S.weapons.blade;
   if (bl.lv > 0) {
     const st = bladeStats(bl.lv);
-    bl.ang += st.spin * stats.aspd * dt;
+    bl.ang += st.spin * aspd * dt;
     bl.trailT -= dt;
     const doTrail = bl.trailT <= 0;
     if (doTrail) bl.trailT = S.lowFX ? 0.07 : 0.035;
-    const dmg = st.dmg * stats.dmg;
+    const dmg = st.dmg * dmgMul;
     for (let k = 0; k < st.count; k++) {
       const a = bl.ang + k / st.count * TAU;
       const bx = player.x + Math.cos(a) * st.radius, by = player.y + Math.sin(a) * st.radius;
@@ -91,7 +94,7 @@ export function updateWeapons(dt) {
   // --- Void Nova: expanding ring, double pulse at max level ---
   const nv = S.weapons.nova;
   if (nv.lv > 0) {
-    nv.t -= dt * stats.aspd;
+    nv.t -= dt * aspd;
     if (nv.echo > 0) { nv.echo -= dt; if (nv.echo <= 0) castNova(); }
     if (nv.t <= 0) {
       nv.t = novaStats(nv.lv).interval;
@@ -118,7 +121,7 @@ export function updateWeapons(dt) {
 export function castNova() {
   const st = novaStats(S.weapons.nova.lv);
   S.novas.push({ cx: S.player.x, cy: S.player.y, r: 10, maxR: st.maxR, spd: st.maxR / BALANCE.weapons.nova.expandT,
-    dmg: st.dmg * S.stats.dmg, id: S.novaId++, color: st.color });
+    dmg: st.dmg * S.stats.dmg * innateDmgMul(S.game.level), id: S.novaId++, color: st.color });
   sfx.nova();
   puff(S.player.x, S.player.y, st.color, 60, 0.4);
 }
