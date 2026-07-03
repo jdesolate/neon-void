@@ -105,7 +105,7 @@ boot with zero console errors → start a run → drive movement → grant XP, r
 **Goal:** Permanent progression: dying still advances you.
 
 **IN scope**
-- Gold drops (tier-weighted chance; elites/bosses guaranteed) with distinct look vs XP gems; wallet persisted in save (schema v3 + migration + tests).
+- Gold drops (tier-weighted chance; elites/bosses guaranteed) with distinct look vs XP gems; wallet persisted in save (schema **v4** + migration + tests — Session 3.5 took v3 for the audio `settings` field; add the wallet as a `2->3`-style additive step to v4).
 - Start-screen meta shop: 6–8 permanent upgrades (max HP, damage, attack speed, move speed, magnet, regen, starting level, gold gain), 3–5 ranks each, geometric cost growth; 44px+ tap targets; shows owned ranks.
 - Run-start applies purchased ranks; run-end summary shows gold earned.
 - `NeonVoid` grant method for external gold (Habit Quest seam, tested via debug handle).
