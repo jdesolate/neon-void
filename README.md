@@ -11,7 +11,8 @@ A Vampire Survivors-style neon arcade shooter. Plain canvas + WebAudio, native E
 - **Escalating threat** — a boss every 60s, telegraphed enemy surges, and a late-game compounding difficulty curve so runs always find an ending.
 - **Titans & the Void Reaper** — recurring multi-dash super-bosses, and a milestone ultimate that's faster than you and turns the whole screen oppressive. Slay it if your build is strong enough.
 - **Gold & meta shop** — enemies drop gold you keep even when you die; the start-screen VOID SHOP sells eight permanent upgrades (HP, damage, attack speed, move speed, magnet, regen, starting level, gold gain) with escalating costs.
-- **Synthesized adaptive music** — zero-asset procedural BGM that darkens and speeds up while a super-boss is loose, plus a persisted on/off toggle. WebAudio SFX on every reward.
+- **Synthesized adaptive music** — zero-asset procedural BGM that darkens and speeds up while a super-boss is loose, plus persisted music and SFX toggles. WebAudio SFX on every reward.
+- **Pause anywhere** — Esc or the pause pill; the game also auto-pauses the moment the window loses focus, so alt-tabbing never costs you a run.
 - **Combo scoring, seedable runs, and versioned saves** — best time/kills persist across updates via a migration chain; all gameplay randomness routes through one seedable RNG.
 - **One responsive build** — desktop and mobile share the same code, with a touch joystick, safe-area-aware HUD, and adaptive quality under load.
 - **Embed seam** — the whole game boots through a single `NeonVoid.mount(element, options)` API for future integration.

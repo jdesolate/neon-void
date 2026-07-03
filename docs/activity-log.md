@@ -2,6 +2,18 @@
 
 Newest entries at the top. One entry per working session: what shipped, deviations from plan, known issues, next step.
 
+## 2026-07-03 — Pause + SFX toggle (owner request, between Sessions 4 and 5)
+
+- **Pause** (`'pause'` state, enterable only from `'play'`): Esc toggles on desktop; a floating `❚❚` pill (44px, above the audio pills bottom-right) covers touch/mouse; the PAUSED overlay's RESUME button, Esc, Enter, or Space resume. `update()` returns immediately while paused — clock, combo decay, spawns, and particles all freeze; music drops to the calm menu mood and self-corrects on resume. Canvas touches are consumed while paused so no joystick starts underneath the overlay.
+- **Auto-pause on focus loss** — the actual alt-tab protection: `window` blur and `visibilitychange`→hidden both call `pauseGame()`. The modal states (level-up, chest) deliberately don't pause: they already gate on input, and Esc-as-pause stays reserved for live play. Owner-suggested Enter-as-pause was rejected: any key (incl. Enter) restarts from the game-over screen, so Enter would be ambiguous; Esc also already means "back" in the shop.
+- **SFX toggle**: new `✦ SFX` pill next to `♪ MUSIC`, persisted as `settings.sfx`. **Save schema bumped v4 → v5** (additive `4->5` migration carries best/settings/gold/shop; non-boolean `sfx` sanitizes to on; migration + round-trip tests). `setSfxEnabled()` gates `tone()` — the SFX-only audio path (music already runs through its own `musicGain`), so the two mutes stay independent.
+- **Latent hit-test bug fixed in passing:** the fixed audio pills sat at z-index 8 *under* the overlays (z 10), so a real tap on the music pill on the start screen fell through to the overlay and started a run (Session 3.5's smoke pass missed it because JS `.click()` bypasses hit-testing). The audio pills now live in a z-12 container above every overlay — which also makes sound reachable while paused — while the pause pill stays at z-8 so overlay backdrops naturally gate it to live play.
+- **Debug handle:** `pause()`, `resume()`; `state()` gains `sfxOn`.
+- Tests: 68 passing (`node --test`, +2) — v4→v5 migration preserves wallet/ranks/music, sfx round-trip + corrupt-value sanitize; existing blob-shape pins updated to v5.
+- Smoke pass clean (zero console errors), partly run **while the owner was live-playtesting in the preview**: v4 blob migrated to v5 in place with wallet 339 + ranks intact; SFX pill toggled/persisted via a real coordinate hit (44px target confirmed as the top element — the z-fix works); Esc paused a live run with the clock verifiably frozen and RESUME brought it back; Esc during the owner's level-up modal was correctly ignored; blur fired the auto-pause handler (observed via its state guard mid-modal).
+- Known issues: none found.
+- Next step: unchanged — **Session 5** — pickups + elite enemies. See `docs/session-plan.md`.
+
 ## 2026-07-03 — Session 4: gold economy + meta shop
 
 - **Gold drops** (`src/game/gold.js` + `BALANCE.gold`): tier-weighted chance on kills through the seeded RNG (pure `goldFor(tier, roll)` in `content/enemies.js`), guaranteed bursts from bigs (boss 12 / titan 30 / reaper 150, split into ≤4-value coins in a ring). Coins are flipping golden discs — visually distinct from the diamond XP gems — with the same drift/magnet/pickup motion. Uncollected coins are lost on death, same rule as gems. Elites' guaranteed drop ships with elites in Session 5.
