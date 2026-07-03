@@ -23,6 +23,11 @@ export function puff(x, y, color, size, life, vx, vy) {
   addPart({ t: 'glow', x: x, y: y, vx: vx || 0, vy: vy || 0, life: life, max: life, size: size, color: color, drag: 1.5 });
 }
 
+// Expanding shockwave ring, drawn as a stroked circle that grows and fades.
+export function ring(x, y, color, maxR, life) {
+  addPart({ t: 'ring', x: x, y: y, vx: 0, vy: 0, life: life, max: life, size: maxR, color: color, drag: 0 });
+}
+
 export function confetti(x, y) {
   const cols = ['#38f0ff', '#7a5cff', '#ffe066', '#ff4d9d', '#5affc8'];
   for (let i = 0; i < 36; i++) {
@@ -52,6 +57,10 @@ export function drawParts() {
       const s = p.size * (0.5 + f);
       ctx.globalAlpha = f * 0.8;
       ctx.drawImage(glowDot(p.color), p.x - s, p.y - s, s * 2, s * 2);
+    } else if (p.t === 'ring') {
+      ctx.globalAlpha = f * 0.85;
+      ctx.strokeStyle = p.color; ctx.lineWidth = 2 + 8 * f;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.size * (1 - f), 0, TAU); ctx.stroke();
     } else {
       ctx.globalAlpha = f;
       ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot);

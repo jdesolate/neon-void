@@ -39,8 +39,9 @@ export function updateCoins(dt) {
     c.t += dt * 5;
     const drag = 1 / (1 + 3 * dt); c.vx *= drag; c.vy *= drag;
     const dx = player.x - c.x, dy = player.y - c.y, dd = Math.hypot(dx, dy) || 1;
-    if (dd < stats.magnet) {
-      const pull = G.pullMax * (1 - dd / stats.magnet) + G.pullBase;
+    if (c.vac || dd < stats.magnet) {
+      // vacuumed coins home at full pull no matter the distance
+      const pull = c.vac ? G.pullMax + G.pullBase : G.pullMax * (1 - dd / stats.magnet) + G.pullBase;
       c.vx += dx / dd * pull * dt; c.vy += dy / dd * pull * dt;
       const sp = Math.hypot(c.vx, c.vy);
       if (sp > G.maxSpd) { c.vx *= G.maxSpd / sp; c.vy *= G.maxSpd / sp; }

@@ -47,6 +47,8 @@ export const sfx = {
   chest() { tone(240, 480, .35, 'sine', .12); tone(120, 240, .35, 'triangle', .08, .05); },
   evolve() { [392, 523, 659, 784, 1046].forEach((f, i) => tone(f, f, .2, 'sine', .17, i * .09)); tone(70, 300, .7, 'sawtooth', .16, .45); },
   lance() { tone(1400, 500, .05, 'sawtooth', .035); },
+  powerup() { tone(520, 1040, .16, 'sine', .15); tone(1040, 1560, .14, 'sine', .09, .09); },
+  bomb() { tone(90, 28, .5, 'sawtooth', .3); tone(420, 60, .22, 'square', .16); tone(1400, 220, .2, 'sawtooth', .07, .03); },
   // grim super-boss stings
   titan() { tone(70, 32, 1.4, 'sawtooth', .3); tone(180, 60, .8, 'square', .12, .15); tone(300, 120, .5, 'square', .08, .5); },
   reaper() { tone(48, 26, 2.2, 'sawtooth', .34); tone(150, 70, 1.4, 'square', .14, .2); tone(92, 40, 1.6, 'triangle', .16, .5); },

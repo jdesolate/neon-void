@@ -6,7 +6,7 @@ export const S = {
   elapsed: 0, frameAvg: 16, lowFX: false,
   W: 0, H: 0, DPR: 1,
   cam: { x: 0, y: 0, ox: 0, oy: 0 },
-  enemies: [], bolts: [], gems: [], coins: [], novas: [], chests: [],
+  enemies: [], bolts: [], gems: [], coins: [], novas: [], chests: [], pickups: [],
   player: {}, stats: {}, weapons: {}, game: {},
   novaId: 1,
   cv: null, ctx: null,

@@ -33,8 +33,9 @@ export function updateGems(dt) {
     g.t += dt * 4;
     const d = 1 / (1 + 3 * dt); g.vx *= d; g.vy *= d;
     const dx = player.x - g.x, dy = player.y - g.y, dd = Math.hypot(dx, dy) || 1;
-    if (dd < stats.magnet) {
-      const pull = G.pullMax * (1 - dd / stats.magnet) + G.pullBase;
+    if (g.vac || dd < stats.magnet) {
+      // vacuumed gems home at full pull no matter the distance
+      const pull = g.vac ? G.pullMax + G.pullBase : G.pullMax * (1 - dd / stats.magnet) + G.pullBase;
       g.vx += dx / dd * pull * dt; g.vy += dy / dd * pull * dt;
       const sp = Math.hypot(g.vx, g.vy);
       if (sp > G.maxSpd) { g.vx *= G.maxSpd / sp; g.vy *= G.maxSpd / sp; }

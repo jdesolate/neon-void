@@ -5,6 +5,7 @@ import { glowDot, starTile } from '../engine/sprites.js';
 import { drawParts, drawTexts, drawAnns } from '../engine/particles.js';
 import { TOUCH, joy } from '../engine/input.js';
 import { bladeStats } from '../content/weapons.js';
+import { ELITE_RING } from '../content/enemies.js';
 import { gemKind } from './gems.js';
 import { COIN } from './gold.js';
 
@@ -77,6 +78,15 @@ function drawEnemy(e) {
     ctx.drawImage(glowDot(e.aura), -ar, -ar, ar * 2, ar * 2);
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = 1;
+  }
+  // elite marker: a pulsing golden ring so the hunt target reads from afar
+  if (e.elite && !e.dead && e.spawnT <= 0) {
+    const er = e.r * (1.3 + 0.08 * Math.sin(S.elapsed * 5 + e.wob));
+    ctx.strokeStyle = ELITE_RING; ctx.lineWidth = 2.5;
+    ctx.globalAlpha = 0.55 + 0.25 * Math.sin(S.elapsed * 5 + e.wob);
+    if (!S.lowFX) { ctx.shadowColor = ELITE_RING; ctx.shadowBlur = 12; }
+    ctx.beginPath(); ctx.arc(0, 0, er, 0, TAU); ctx.stroke();
+    ctx.shadowBlur = 0; ctx.globalAlpha = alpha;
   }
   ctx.rotate(rot);
   ctx.scale(e.sx * s * bs, e.sy * s * bs);
@@ -166,9 +176,31 @@ function drawChests() {
   }
 }
 
+function drawPickups() {
+  const ctx = S.ctx;
+  let drawn = false;
+  for (const u of S.pickups) {
+    if (!onScreen(u.x, u.y, 60)) continue;
+    drawn = true;
+    const y = u.y + Math.sin(u.t * 3) * 4, pulse = 0.75 + 0.25 * Math.sin(S.elapsed * 6);
+    const s = 30 * pulse;
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.drawImage(glowDot(u.row.color), u.x - s, y - s, s * 2, s * 2);
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.font = '900 20px system-ui,sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#ffffff';
+    ctx.shadowColor = u.row.color; ctx.shadowBlur = S.lowFX ? 0 : 12;
+    ctx.fillText(u.row.icon, u.x, y);
+    ctx.shadowBlur = 0;
+  }
+  if (drawn) ctx.textBaseline = 'alphabetic';
+}
+
 export function drawWorld() {
   const ctx = S.ctx;
   drawChests();
+  drawPickups();
   // gems
   ctx.globalCompositeOperation = 'lighter';
   for (const g of S.gems) {
@@ -267,6 +299,11 @@ export function drawScreenFX() {
   }
   if (game.flash > 0) {
     ctx.fillStyle = 'rgba(255,40,80,' + (game.flash * 0.4).toFixed(3) + ')';
+    ctx.fillRect(0, 0, W, H);
+  }
+  // screen bomb: a warm white detonation flash, distinct from the red hurt flash
+  if (game.bombFlash > 0) {
+    ctx.fillStyle = 'rgba(255,236,190,' + (game.bombFlash * 0.5).toFixed(3) + ')';
     ctx.fillRect(0, 0, W, H);
   }
   if (!vignette) rebuildBG();

@@ -1,9 +1,9 @@
 // Enemy spawning, AI, separation, boss behavior, and kill/damage resolution.
 import { S, addShake } from '../state.js';
 import { BALANCE, enemyHpMul, enemySpdMul, enemyDmgMul, spawnInterval, bossHp, bossDmg,
-  titanHp, titanDmg, reaperHp, reaperDmg } from '../config.js';
+  titanHp, titanDmg, reaperHp, reaperDmg, nextEliteGap } from '../config.js';
 import { TAU, rnd, dist2 } from '../utils.js';
-import { TIERS, BOSS_STYLE, TITAN_STYLE, REAPER_STYLE, pickTier, goldFor } from '../content/enemies.js';
+import { TIERS, BOSS_STYLE, TITAN_STYLE, REAPER_STYLE, ELITE_RING, pickTier, goldFor, makeElite } from '../content/enemies.js';
 import { bodySprite, flatSprite } from '../engine/sprites.js';
 import { burst, puff, addText, announce, addPart, confetti } from '../engine/particles.js';
 import { sfx } from '../engine/audio.js';
@@ -88,6 +88,15 @@ export function spawnLogic(dt) {
     if (!game.reaper) { game.titanN++; spawnTitan(); }
     game.titanAt = game.time + BALANCE.titan.every;
   }
+  // Elites: a modified regular enemy on a jittered cadence, worth hunting for its guaranteed reward
+  if (game.time >= game.eliteAt) {
+    game.eliteAt = game.time + nextEliteGap(S.rng.next());
+    if (enemies.length < SP.cap) {
+      const ep = spawnPos(SP.margin);
+      enemies.push(makeElite(makeEnemy(pickTier(game.time, S.rng.next()), ep.x, ep.y)));
+      announce('ELITE HUNT', ELITE_RING, 1.4); sfx.tick();
+    }
+  }
 }
 
 // Shared spawner for boss/titan/reaper: same phase machine, per-kind style, HP, and scale.
@@ -145,6 +154,7 @@ export function updateEnemies(dt) {
     if (e.bladeT > 0) e.bladeT -= dt;
 
     if (e.isBoss) { updateBoss(e, dt); }
+    else if (e.stagT > 0) { e.stagT -= dt; } // bomb stagger: frozen where the blast shoved them
     else {
       const dx = player.x - e.x, dy = player.y - e.y, d = Math.hypot(dx, dy) || 1;
       const wob = Math.sin(S.elapsed * 2.2 + e.wob) * 0.35;
@@ -258,8 +268,8 @@ function onKill(e) {
   const game = S.game, T = BALANCE.time, B = BALANCE.boss;
   game.kills++;
   game.combo++; game.comboT = S.stats.comboWin; game.comboPulse = 1;
-  const big = e.isBoss || e.tier >= 2;
-  S.freeze += e.isBoss ? T.freezeBoss : (big ? T.freezeBig : T.freezeSmall);
+  const big = e.isBoss || e.tier >= 2 || e.elite;
+  S.freeze = Math.min(T.freezeMax, S.freeze + (e.isBoss ? T.freezeBoss : (big ? T.freezeBig : T.freezeSmall)));
   if (e.isBoss) { addShake(18); } else if (big) { addShake(4); }
   (e.isBoss || big) ? sfx.bigKill() : sfx.kill();
   burst(e.x, e.y, e.color, e.isBoss ? 46 : (big ? 18 : 10), e.isBoss ? 420 : 260, e.isBoss ? 6 : 3.5, e.isBoss ? 1 : 0.6);
@@ -284,8 +294,17 @@ function onKill(e) {
     dropChest(e.x, e.y);
   } else {
     dropGem(e.x, e.y, e.xp);
-    const gv = goldFor(e.tier, S.rng.next());
-    if (gv > 0) dropGold(e.x, e.y, gv);
+    if (e.elite) {
+      // guaranteed reward: occasionally a chest, otherwise a gold burst
+      game.elitesKilled++;
+      const E = BALANCE.elite;
+      if (S.rng.next() < E.chestChance) dropChest(e.x, e.y);
+      else dropGoldBurst(e.x, e.y, E.gold);
+      bus.emit('elite-killed', { n: game.elitesKilled, tier: e.tier, x: e.x, y: e.y, time: game.time });
+    } else {
+      const gv = goldFor(e.tier, S.rng.next());
+      if (gv > 0) dropGold(e.x, e.y, gv);
+    }
   }
-  bus.emit('enemy-killed', { tier: e.tier, isBoss: e.isBoss, kind: e.kind || null, xp: e.xp, x: e.x, y: e.y, combo: game.combo });
+  bus.emit('enemy-killed', { tier: e.tier, isBoss: e.isBoss, elite: !!e.elite, kind: e.kind || null, xp: e.xp, x: e.x, y: e.y, combo: game.combo });
 }

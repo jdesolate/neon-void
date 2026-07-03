@@ -23,6 +23,18 @@ export function pickTier(time, r) {
   return 0;
 }
 
+export const ELITE_RING = '#ffd166';
+
+// Pure elite wrapper: stat multipliers over an existing tier enemy, no new species.
+export function makeElite(e) {
+  const E = BALANCE.elite;
+  e.elite = true;
+  e.hp *= E.hpMul; e.maxhp *= E.hpMul;
+  e.dmg *= E.dmgMul;
+  e.r *= E.rMul; e.sprScale = (e.sprScale || 1) * E.rMul;
+  return e;
+}
+
 // Pure gold roll: tier-weighted chance and value from one RNG roll, seed-testable.
 export function goldFor(tier, r) {
   const G = BALANCE.gold;

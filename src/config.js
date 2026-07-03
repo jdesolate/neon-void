@@ -95,8 +95,21 @@ export const BALANCE = {
     regen: 1, regenCap: 6, magnet: 1.45, magnetCap: 520, crit: 0.08, critCap: 0.61,
     xpgainAdd: 0.15, comboWin: 0.8, comboWinCap: 7,
   },
+  // Rare pickups: one shared drop table, rolled once per regular kill through the seeded RNG.
+  pickups: {
+    chance: 0.009, pickupR: 26, cap: 8,
+    weights: { heal: 4, magnet: 3, bomb: 3 },
+    healPct: 0.30,
+    bomb: { pct: 0.6, bossPct: 0.06, min: 40, stagger: 1.1, knock: 100, margin: 60 },
+  },
+  // Elites: stat-multiplier wrapper over regular tiers with a guaranteed reward.
+  elite: {
+    firstAt: 60, gapMin: 45, gapMax: 60,
+    hpMul: 6, dmgMul: 1.5, rMul: 1.35, chestChance: 0.2, gold: 10,
+  },
   gems: { cap: 300, pickupR: 16, pullBase: 300, pullMax: 1400, maxSpd: 720, bossHealOnKill: 15 },
-  time: { levelSlow: 0.1, overSlow: 0.06, freezeBoss: 0.22, freezeBig: 0.05, freezeSmall: 0.025 },
+  // freezeMax caps stacked hit-stop so mass kills (screen bomb) cannot freeze the game for seconds
+  time: { levelSlow: 0.1, overSlow: 0.06, freezeBoss: 0.22, freezeBig: 0.05, freezeSmall: 0.025, freezeMax: 0.45 },
 };
 
 // Pure scaling math, unit-testable without a browser.
@@ -151,6 +164,10 @@ export function reaperHp(min) {
 }
 export function reaperDmg(min) {
   const r = BALANCE.reaper; return r.dmg * (1 + min * r.dmgPerMin);
+}
+// Elite cadence: one per gapMin..gapMax seconds, jittered by one seeded roll.
+export function nextEliteGap(roll) {
+  const E = BALANCE.elite; return E.gapMin + roll * (E.gapMax - E.gapMin);
 }
 export function comboMult(combo) {
   const c = BALANCE.combo; return 1 + Math.min(combo, c.maxStack) * c.multPer;

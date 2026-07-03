@@ -8,10 +8,11 @@ import { createSave, localStorageAdapter } from './engine/save.js';
 import { initAudio, sfx, music, setSfxEnabled, sfxEnabled } from './engine/audio.js';
 import { bindInput } from './engine/input.js';
 import { resetFX, updateParts, updateTexts } from './engine/particles.js';
-import { pickTier } from './content/enemies.js';
+import { pickTier, makeElite } from './content/enemies.js';
 import { initEnemySprites, spawnPos, makeEnemy, spawnBoss, spawnTitan, spawnReaper, spawnLogic, updateEnemies, damageEnemy } from './game/enemies.js';
 import { initGemSprites, updateGems } from './game/gems.js';
 import { initGoldSprites, updateCoins } from './game/gold.js';
+import { initPickups, resetPickups, updatePickups, dropPickup } from './game/pickups.js';
 import { initEconomy, grantGold } from './game/economy.js';
 import { initShop, closeShop } from './game/shop.js';
 import { metaBonuses } from './content/shop.js';
@@ -31,6 +32,7 @@ function resize() {
 function reset() {
   S.enemies.length = 0; S.bolts.length = 0; S.gems.length = 0; S.coins.length = 0; S.novas.length = 0;
   resetChests();
+  resetPickups();
   resetFX();
   const P = BALANCE.player, WP = BALANCE.weapons;
   // permanent shop ranks apply once here, on top of the base stat block
@@ -49,6 +51,7 @@ function reset() {
     spawnT: BALANCE.spawn.firstDelay, surgeT: BALANCE.spawn.surgeFirst,
     bossAt: BALANCE.boss.firstAt, bossN: 0, boss: null, bossAlive: 0,
     titanAt: BALANCE.titan.firstAt, titanN: 0, titansKilled: 0,
+    eliteAt: BALANCE.elite.firstAt, elitesKilled: 0, bombFlash: 0,
     reaperAt: BALANCE.reaper.at, reaper: null, reaperSpawned: false, reaperWarned: false, reaperSlain: false,
     combo: 0, comboT: 0, comboPulse: 0, threat: 1, pendingLv: 0, lvModalAt: -1e9, overT: 0, overShown: false, flash: 0, dieT: 0 });
   S.cam.x = 0; S.cam.y = 0; S.shake = 0; S.ts = 1; S.tsT = 1; S.freeze = 0;
@@ -108,6 +111,7 @@ function update(dt, rdt) {
   updateWeapons(dt);
   updateGems(dt);
   updateCoins(dt);
+  updatePickups(dt);
   updateChests(dt);
   if (S.state === 'chest') updateChestReveal(rdt);
   updateParts(dt);
@@ -119,6 +123,7 @@ function update(dt, rdt) {
   }
   S.game.comboPulse = Math.max(0, S.game.comboPulse - rdt * 4);
   if (S.game.flash > 0) S.game.flash -= rdt;
+  if (S.game.bombFlash > 0) S.game.bombFlash -= rdt * 1.6;
   // camera eases toward the player
   const k = 1 - Math.pow(0.0018, rdt);
   S.cam.x += (S.player.x - S.cam.x) * k;
@@ -165,6 +170,12 @@ function makeDebugHandle() {
     forceTitan() { if (S.state === 'play') { S.game.titanN++; spawnTitan(); } },
     forceReaper() { if (S.state === 'play' && !S.game.reaper) { S.game.reaperSpawned = true; spawnReaper(); } },
     forceChest() { if (S.state === 'play') dropChest(S.player.x + 40, S.player.y); },
+    forcePickup(id) { if (S.state === 'play') dropPickup(S.player.x + 40, S.player.y, id || 'heal'); },
+    forceElite() {
+      if (S.state !== 'play') return;
+      const p = spawnPos(BALANCE.spawn.margin);
+      S.enemies.push(makeElite(makeEnemy(pickTier(S.game.time, S.rng.next()), p.x, p.y)));
+    },
     setWeapon(id, lv, evo) {
       const w = S.weapons[id];
       if (w) { w.lv = Math.max(0, Math.min(BALANCE.weapons.maxLv, lv)); w.evo = !!evo; }
@@ -189,7 +200,9 @@ function makeDebugHandle() {
       return { state: S.state, time: S.game.time, kills: S.game.kills, level: S.game.level,
         hp: S.player.hp, maxhp: S.stats.maxhp, enemies: S.enemies.length, seed: S.game.seed, lowFX: S.lowFX,
         gold: Math.floor(S.game.gold), wallet: S.save.data.gold, shop: Object.assign({}, S.save.data.shop),
-        coins: S.coins.length, chests: S.chests.length, bossAlive: S.game.bossAlive,
+        coins: S.coins.length, chests: S.chests.length, pickups: S.pickups.length,
+        elites: S.enemies.filter(function (e) { return e.elite && !e.dead; }).length,
+        elitesKilled: S.game.elitesKilled, bossAlive: S.game.bossAlive,
         titanN: S.game.titanN, reaper: !!S.game.reaper, reaperSlain: S.game.reaperSlain,
         music: music.enabled(), sfxOn: sfxEnabled(),
         weapons: { bolt: { lv: S.weapons.bolt.lv, evo: !!S.weapons.bolt.evo },
@@ -218,6 +231,7 @@ function mount(root, options) {
   initGoldSprites();
   initEconomy(updateWalletUI);
   initShop();
+  initPickups();
 
   bindInput(S.cv, {
     onKeyAction(code) {
