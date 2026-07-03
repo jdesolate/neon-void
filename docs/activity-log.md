@@ -2,6 +2,21 @@
 
 Newest entries at the top. One entry per working session: what shipped, deviations from plan, known issues, next step.
 
+## 2026-07-03 — Session 3: weapon evolutions + boss chests
+
+- Evolution data table in `src/content/evolutions.js` (row order = chest priority): Pulse Bolt Lv5 → **Storm Lance** (piercing lances, faster fire, lightning palette), Blades Lv5 → **Halo of Ruin** (1.6× ring, sustained 0.16s contact ticks, white-gold, linking ring visual), Nova Lv5 → **Event Horizon** (pull-in instead of knockback, bigger/harder, dark-purple). Pure `eligibleEvolutions`/`pickEvolution` take the weapons state as an argument; all multipliers in `BALANCE.evolutions`, chest timings in `BALANCE.chest`.
+- Weapon stat functions (`content/weapons.js`) now take an `evo` flag and return the evolved form's stats; runtimes read the per-weapon `evo` flag set at run reset. Piercing implemented as a per-bolt hit list; blade tick rate moved from the inline constant to `st.hitCd`; evolved novas carry a `pull` field.
+- Boss death drops a chest entity (`src/game/chests.js`); touching it slow-mos (`BALANCE.chest.slow`), opens a slot-machine reveal overlay (reuses overlay styling, decelerating swaps over ~2.1s), locks on the highest-priority eligible evolution, applies it with announce/confetti/fanfare, then auto-closes after 1.4s or on tap/any key. Reveal runs on real time so slow-mo does not stretch it.
+- Fallback when nothing is eligible: **XP gem burst** (8 gems, 60 XP total) — the planned gold burst stubbed as bonus XP per the session plan until the Session 4 economy lands; logged here as the sanctioned deviation.
+- Events: `chest-opened` ({result: 'evolution'|'xp', evo, time}) and `weapon-evolved` ({id, base, time}); run-ended payload now includes an `evolutions` id array (small forward-looking addition for the Session 7 payload freeze).
+- Level-up weapon cards advertise their evolution (`LV 5 + BOSS CHEST → STORM LANCE` line in the evolution's color), covering PRD story 9. New SFX: chest drop/open, evolve fanfare, lance shot.
+- Debug handle additions: `forceChest()`, `setWeapon(id, lv, evo)`, plus `chests` count and per-weapon `{lv, evo}` in `state()`.
+- Tests: 46 passing (`node --test`) — new `test/evolutions.test.js` covers row integrity, maxed → evolves, below-max → nothing, already-evolved excluded (next eligible wins), all-evolved → fallback, table-order priority, and evolved-stat contracts for all three weapons.
+- Smoke pass clean (with the new force-chest step): boot zero console errors, level-up via card click and key 2 with evo hint visible, forced chest → slot reveal → Storm Lance applied mid-run, boss kill dropped a chest, all-evolved chest fell back to the XP burst with no modal trap, key dismiss + auto-close both verified, death → game-over stats + NEW BEST + v2 persistence across reload, restart, 210-enemy stress with all three evolutions at ~6.9ms frame average and no adaptive-quality thrash.
+- Session 2's watch item (game-over screen restarting without input) did not reproduce.
+- Known issues: none found.
+- Next step: **Session 3.5** — endgame threat: Titans + the Void Reaper. See `docs/session-plan.md`.
+
 ## 2026-07-03 — Session 2: combat feel & pacing patch (+ scope amendment from beta feedback)
 
 - **Design decision (owner):** player power stays uncapped — the late-game exponential power fantasy is a feature. Beta testers reported that at level 100+ enemies stop mattering and at 200+ the level-up modal opens every second, freezing movement. Root cause analysis: uncapped Overcharge/Wisdom compound exponentially while enemy HP was only quadratic and `xpToNext` only ~L^1.3; one-shotting the spawn cap floods XP faster than levels cost. Fix chosen: make the world re-catch the player instead of capping the player, and never let level-ups block movement.
