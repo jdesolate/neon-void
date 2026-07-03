@@ -3,12 +3,14 @@ import { S } from '../state.js';
 import { clamp, fmtTime } from '../utils.js';
 import { sfx } from '../engine/audio.js';
 import { bus } from '../engine/events.js';
+import { EVOLUTIONS } from '../content/evolutions.js';
 
 const $ = function (id) { return document.getElementById(id); };
 export const ui = {
   xp: $('xpfill'), hp: $('hpfill'), lvl: $('lvltag'), timer: $('timer'), threat: $('threat'), kills: $('kills'),
   combo: $('combo'), comboX: $('comboX'), start: $('start'), bestLine: $('bestLine'), levelup: $('levelup'), cards: $('cards'),
   over: $('over'), nbTime: $('nbTime'), nbKills: $('nbKills'), goTime: $('goTime'), goKills: $('goKills'), goBest: $('goBest'), restart: $('restartBtn'),
+  chest: $('chest'), chestSlot: $('chestSlot'), chestIcon: $('chestIcon'), chestName: $('chestName'), chestDesc: $('chestDesc'), chestHint: $('chestHint'),
 };
 
 export function showBestLine() {
@@ -62,6 +64,7 @@ export function showGameOver() {
   ui.over.classList.remove('hidden');
   bus.emit('run-ended', {
     time: t, kills: k, level: S.game.level, seed: S.game.seed,
+    evolutions: EVOLUTIONS.filter(function (ev) { return S.weapons[ev.base] && S.weapons[ev.base].evo; }).map(function (ev) { return ev.id; }),
     newBestTime: nbT, newBestKills: nbK, bestTime: b.time, bestKills: b.kills,
   });
 }

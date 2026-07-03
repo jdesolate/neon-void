@@ -43,6 +43,14 @@ export const BALANCE = {
       dmgBase: 14, dmgPerLv: 6, echoLv: 5, echoT: 0.35, ringWidth: 16, knockback: 26, expandT: 0.5,
     },
   },
+  // evolved weapon forms: multipliers over the base max-level stats
+  evolutions: {
+    stormlance: { intervalMul: 0.65, dmgMul: 1.3, speedMul: 1.3, r: 9 },
+    haloruin: { radiusMul: 1.6, sizeMul: 1.3, spinMul: 1.2, dmgMul: 1.25, hitCd: 0.16 },
+    horizon: { radiusMul: 1.4, intervalMul: 0.85, dmgMul: 1.35, pull: 46 },
+    xpFallback: 60,
+  },
+  chest: { pickupR: 30, slow: 0.12, cycleT: 2.1, lockT: 1.4, bobAmp: 4, gemCount: 8, gemRing: 60 },
   upgrades: {
     dmg: 1.15, aspd: 1.12, aspdCap: 2.4, spd: 1.10, spdCap: 430, hp: 25,
     regen: 1, regenCap: 6, magnet: 1.45, magnetCap: 520, crit: 0.08, critCap: 0.61,

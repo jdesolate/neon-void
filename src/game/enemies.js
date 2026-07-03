@@ -9,6 +9,7 @@ import { sfx } from '../engine/audio.js';
 import { bus } from '../engine/events.js';
 import { damagePlayer } from './player.js';
 import { dropGem } from './gems.js';
+import { dropChest } from './chests.js';
 import { ui } from './hud.js';
 
 export function initEnemySprites() {
@@ -215,6 +216,7 @@ function onKill(e) {
       dropGem(e.x + Math.cos(a) * S.rng.range(B.gemRingMin, B.gemRingMax), e.y + Math.sin(a) * S.rng.range(B.gemRingMin, B.gemRingMax), B.gemValue);
     }
     S.player.hp = Math.min(S.stats.maxhp, S.player.hp + B.killHeal);
+    dropChest(e.x, e.y);
   } else {
     dropGem(e.x, e.y, e.xp);
   }

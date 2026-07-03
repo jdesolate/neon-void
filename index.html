@@ -76,6 +76,15 @@ html,body{height:100%;overflow:hidden;background:#05030f;touch-action:none;overs
 .card .cName{font-size:15px;font-weight:800;letter-spacing:.06em}
 .card .cDesc{font-size:12px;color:#a9b6d8;margin-top:2px}
 .card .cLv{margin-left:auto;font-size:11px;font-weight:800;letter-spacing:.1em;color:#ffd166;white-space:nowrap}
+.card .cEvo{display:block;font-size:10px;font-weight:700;letter-spacing:.08em;margin-top:3px;opacity:.85}
+
+#chestSlot{display:flex;flex-direction:column;align-items:center;gap:8px;width:min(320px,86vw);padding:26px 20px;
+  border-radius:16px;border:1px solid rgba(255,209,102,.4);background:linear-gradient(160deg,rgba(40,30,8,.96),rgba(16,10,4,.96));
+  box-shadow:0 0 20px rgba(255,209,102,.2),0 6px 18px rgba(0,0,0,.5)}
+#chestIcon{font-size:40px;font-weight:900;line-height:1}
+#chestName{font-size:20px;font-weight:900;letter-spacing:.18em}
+#chestDesc{font-size:12px;color:#d8c9a8;min-height:15px}
+#chestSlot.lock{animation:bestPop .5s cubic-bezier(.2,1.6,.4,1)}
 
 .goTitle{font-size:clamp(28px,8vw,44px);font-weight:900;letter-spacing:.16em;color:#ff5a7a;text-shadow:0 0 22px rgba(255,60,90,.8)}
 .newbest{font-size:16px;font-weight:900;letter-spacing:.24em;color:#ffe066;padding:6px 18px;border:1px solid rgba(255,224,102,.6);
@@ -114,6 +123,15 @@ html,body{height:100%;overflow:hidden;background:#05030f;touch-action:none;overs
   <div class="luTitle">LEVEL UP</div>
   <div id="cards"></div>
   <div class="hint">CHOOSE ONE — KEYS 1 / 2 / 3</div>
+</div>
+<div id="chest" class="overlay hidden">
+  <div class="luTitle">VOID CHEST</div>
+  <div id="chestSlot">
+    <span id="chestIcon">?</span>
+    <span id="chestName">???</span>
+    <span id="chestDesc"></span>
+  </div>
+  <div id="chestHint" class="hint">STABILIZING…</div>
 </div>
 <div id="over" class="overlay hidden">
   <div class="goTitle">RUN TERMINATED</div>

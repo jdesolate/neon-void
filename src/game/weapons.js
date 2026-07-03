@@ -21,17 +21,19 @@ export function updateWeapons(dt) {
     if (bo.t <= 0) {
       const tgt = nearestEnemy(player.x, player.y, WB.bolt.range);
       if (tgt) {
-        const st = boltStats(bo.lv);
+        const st = boltStats(bo.lv, bo.evo);
         bo.t = st.interval;
+        const speed = WB.bolt.speed * st.speedMul;
         const base = Math.atan2(tgt.y - player.y, tgt.x - player.x);
         for (let i = 0; i < st.count; i++) {
           const a = base + (i - (st.count - 1) / 2) * WB.bolt.spread;
-          bolts.push({ x: player.x, y: player.y, vx: Math.cos(a) * WB.bolt.speed, vy: Math.sin(a) * WB.bolt.speed,
+          bolts.push({ x: player.x, y: player.y, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed,
             dmg: st.dmg * dmgMul, r: st.r,
             homing: st.homing, life: WB.bolt.life, trailT: 0,
+            pierce: st.pierce, hits: st.pierce ? [] : null,
             color: st.color });
         }
-        sfx.shoot();
+        bo.evo ? sfx.lance() : sfx.shoot();
       } else bo.t = WB.bolt.retryT;
     }
   }
@@ -54,8 +56,14 @@ export function updateWeapons(dt) {
     let hit = false;
     for (const e of enemies) {
       if (e.dead || e.spawnT > 0.2) continue;
+      if (b.hits && b.hits.indexOf(e) !== -1) continue;
       const rr = b.r + e.r;
-      if (dist2(b.x, b.y, e.x, e.y) < rr * rr) { damageEnemy(e, b.dmg); hit = true; break; }
+      if (dist2(b.x, b.y, e.x, e.y) < rr * rr) {
+        damageEnemy(e, b.dmg);
+        // evolved lances pierce: mark the enemy hit and keep flying
+        if (b.pierce) { b.hits.push(e); burst(b.x, b.y, b.color, 3, 140, 2, 0.25); continue; }
+        hit = true; break;
+      }
     }
     if (hit) {
       burst(b.x, b.y, b.color, 4, 160, 2, 0.3);
@@ -66,7 +74,7 @@ export function updateWeapons(dt) {
   // --- Orbital Blades: count/size/speed/color scale with level ---
   const bl = S.weapons.blade;
   if (bl.lv > 0) {
-    const st = bladeStats(bl.lv);
+    const st = bladeStats(bl.lv, bl.evo);
     bl.ang += st.spin * aspd * dt;
     bl.trailT -= dt;
     const doTrail = bl.trailT <= 0;
@@ -80,7 +88,7 @@ export function updateWeapons(dt) {
         if (e.dead || e.spawnT > 0.2 || e.bladeT > 0) continue;
         const rr = e.r + st.size + 3;
         if (dist2(bx, by, e.x, e.y) < rr * rr) {
-          e.bladeT = WB.blade.hitCd;
+          e.bladeT = st.hitCd;
           damageEnemy(e, dmg);
           if (!e.isBoss) {
             const d = Math.hypot(e.x - player.x, e.y - player.y) || 1;
@@ -97,7 +105,7 @@ export function updateWeapons(dt) {
     nv.t -= dt * aspd;
     if (nv.echo > 0) { nv.echo -= dt; if (nv.echo <= 0) castNova(); }
     if (nv.t <= 0) {
-      nv.t = novaStats(nv.lv).interval;
+      nv.t = novaStats(nv.lv, nv.evo).interval;
       castNova();
       if (nv.lv >= WB.nova.echoLv) nv.echo = WB.nova.echoT;
     }
@@ -112,16 +120,20 @@ export function updateWeapons(dt) {
       if (Math.abs(d - n.r) < e.r + WB.nova.ringWidth) {
         e.lastNova = n.id;
         damageEnemy(e, n.dmg);
-        if (!e.isBoss) { const dd = d || 1; e.x += (e.x - n.cx) / dd * WB.nova.knockback; e.y += (e.y - n.cy) / dd * WB.nova.knockback; }
+        // Event Horizon drags enemies inward instead of knocking them back
+        if (!e.isBoss) {
+          const dd = d || 1, push = n.pull > 0 ? -n.pull : WB.nova.knockback;
+          e.x += (e.x - n.cx) / dd * push; e.y += (e.y - n.cy) / dd * push;
+        }
       }
     }
   }
 }
 
 export function castNova() {
-  const st = novaStats(S.weapons.nova.lv);
+  const st = novaStats(S.weapons.nova.lv, S.weapons.nova.evo);
   S.novas.push({ cx: S.player.x, cy: S.player.y, r: 10, maxR: st.maxR, spd: st.maxR / BALANCE.weapons.nova.expandT,
-    dmg: st.dmg * S.stats.dmg * innateDmgMul(S.game.level), id: S.novaId++, color: st.color });
+    dmg: st.dmg * S.stats.dmg * innateDmgMul(S.game.level), id: S.novaId++, color: st.color, pull: st.pull });
   sfx.nova();
   puff(S.player.x, S.player.y, st.color, 60, 0.4);
 }

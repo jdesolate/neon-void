@@ -2,6 +2,7 @@
 import { S } from '../state.js';
 import { BALANCE, xpToNext, comboMult } from '../config.js';
 import { UPS, rollUpgrades } from '../content/upgrades.js';
+import { EVOLUTIONS } from '../content/evolutions.js';
 import { confetti, addText } from '../engine/particles.js';
 import { sfx } from '../engine/audio.js';
 import { bus } from '../engine/events.js';
@@ -38,6 +39,9 @@ function autoPick() {
 
 let choices = [];
 
+const evoByBase = {};
+EVOLUTIONS.forEach(function (ev) { evoByBase[ev.base] = ev; });
+
 export function openLevelUp() {
   S.state = 'level'; S.tsT = BALANCE.time.levelSlow;
   S.game.lvModalAt = S.game.time;
@@ -59,9 +63,12 @@ function buildCards() {
     btn.style.borderColor = u.col + '88';
     btn.style.boxShadow = '0 0 16px ' + u.col + '33, 0 6px 18px rgba(0,0,0,.5)';
     const lvTxt = u.lv ? (u.lv() === 0 ? 'NEW!' : 'LV ' + u.lv() + ' → ' + (u.lv() + 1)) : '+';
+    // weapon cards advertise their evolution so builds can be planned (PRD story 9)
+    const ev = evoByBase[u.id];
+    const evoTxt = ev ? '<span class="cEvo" style="color:' + ev.color + '">LV ' + BALANCE.weapons.maxLv + ' + BOSS CHEST → ' + ev.name + '</span>' : '';
     btn.innerHTML = '<span class="cIcon" style="color:' + u.col + ';text-shadow:0 0 10px ' + u.col + '">' + u.icon + '</span>' +
       '<span class="cBody"><span class="cName" style="color:' + u.col + '">' + u.name + '</span>' +
-      '<span class="cDesc" style="display:block">' + u.desc() + '</span></span>' +
+      '<span class="cDesc" style="display:block">' + u.desc() + '</span>' + evoTxt + '</span>' +
       '<span class="cLv">' + lvTxt + '</span>';
     btn.addEventListener('click', function () { pickCard(i); });
     ui.cards.appendChild(btn);

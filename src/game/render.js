@@ -134,8 +134,31 @@ function drawPlayer() {
   ctx.globalAlpha = 1;
 }
 
+function drawChests() {
+  const ctx = S.ctx;
+  for (const c of S.chests) {
+    if (!onScreen(c.x, c.y, 60)) continue;
+    const y = c.y + Math.sin(c.t * 3) * 4, pulse = 0.8 + 0.2 * Math.sin(S.elapsed * 5);
+    const s = 40 * pulse;
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.drawImage(glowDot('#ffd166'), c.x - s, y - s, s * 2, s * 2);
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.save();
+    ctx.translate(c.x, y); ctx.rotate(Math.PI / 4);
+    ctx.shadowColor = '#ffd166'; ctx.shadowBlur = S.lowFX ? 0 : 14;
+    ctx.fillStyle = '#3a2a08';
+    ctx.strokeStyle = '#ffd166'; ctx.lineWidth = 2.5;
+    ctx.fillRect(-13, -13, 26, 26); ctx.strokeRect(-13, -13, 26, 26);
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#ffe9b0';
+    ctx.fillRect(-13, -3, 26, 6);
+    ctx.restore();
+  }
+}
+
 export function drawWorld() {
   const ctx = S.ctx;
+  drawChests();
   // gems
   ctx.globalCompositeOperation = 'lighter';
   for (const g of S.gems) {
@@ -163,12 +186,27 @@ export function drawWorld() {
     const s = b.r * 3.2;
     ctx.drawImage(glowDot(b.color), b.x - s, b.y - s, s * 2, s * 2);
     ctx.fillStyle = '#ffffff';
-    ctx.beginPath(); ctx.arc(b.x, b.y, b.r * 0.55, 0, TAU); ctx.fill();
+    if (b.pierce) {
+      // Storm Lance: elongated bolt aligned with its velocity
+      ctx.save();
+      ctx.translate(b.x, b.y); ctx.rotate(Math.atan2(b.vy, b.vx));
+      ctx.beginPath(); ctx.ellipse(0, 0, b.r * 2.6, b.r * 0.5, 0, 0, TAU); ctx.fill();
+      ctx.restore();
+    } else {
+      ctx.beginPath(); ctx.arc(b.x, b.y, b.r * 0.55, 0, TAU); ctx.fill();
+    }
   }
   // orbital blades
   const bl = S.weapons.blade;
   if (bl.lv > 0) {
-    const st = bladeStats(bl.lv);
+    const st = bladeStats(bl.lv, bl.evo);
+    if (bl.evo) {
+      // Halo of Ruin: a sustained golden ring links the blades
+      ctx.strokeStyle = st.color; ctx.lineWidth = 3;
+      ctx.globalAlpha = 0.3 + 0.1 * Math.sin(S.elapsed * 6);
+      ctx.beginPath(); ctx.arc(S.player.x, S.player.y, st.radius, 0, TAU); ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
     for (let k = 0; k < st.count; k++) {
       const a = bl.ang + k / st.count * TAU;
       const bx = S.player.x + Math.cos(a) * st.radius, by = S.player.y + Math.sin(a) * st.radius;

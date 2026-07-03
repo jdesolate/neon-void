@@ -11,6 +11,7 @@ import { resetFX, updateParts, updateTexts } from './engine/particles.js';
 import { pickTier } from './content/enemies.js';
 import { initEnemySprites, spawnPos, makeEnemy, spawnBoss, spawnLogic, updateEnemies, damageEnemy } from './game/enemies.js';
 import { initGemSprites, updateGems } from './game/gems.js';
+import { dropChest, updateChests, updateChestReveal, dismissChest, resetChests } from './game/chests.js';
 import { updateWeapons } from './game/weapons.js';
 import { updatePlayer, damagePlayer } from './game/player.js';
 import { gainXP, pickCard } from './game/levelup.js';
@@ -25,14 +26,15 @@ function resize() {
 
 function reset() {
   S.enemies.length = 0; S.bolts.length = 0; S.gems.length = 0; S.novas.length = 0;
+  resetChests();
   resetFX();
   const P = BALANCE.player, WP = BALANCE.weapons;
   Object.assign(S.player, { x: 0, y: 0, r: P.r, hp: P.maxhp, dir: 0, tilt: 0, inv: 0, mvx: 0, mvy: 0, dead: false, trailT: 0 });
   Object.assign(S.stats, { dmg: 1, aspd: 1, spd: P.spd, maxhp: P.maxhp, regen: P.regen, magnet: P.magnet, crit: P.crit, xpgain: P.xpgain, comboWin: P.comboWin });
   Object.assign(S.weapons, {
-    blade: { lv: 0, ang: 0, trailT: 0 },
-    bolt: { lv: WP.bolt.startLv, t: WP.bolt.startT },
-    nova: { lv: 0, t: WP.nova.startT, echo: 0 },
+    blade: { lv: 0, ang: 0, trailT: 0, evo: false },
+    bolt: { lv: WP.bolt.startLv, t: WP.bolt.startT, evo: false },
+    nova: { lv: 0, t: WP.nova.startT, echo: 0, evo: false },
   });
   Object.assign(S.game, { time: 0, kills: 0, level: 1, xp: 0, next: xpToNext(1),
     spawnT: BALANCE.spawn.firstDelay, surgeT: BALANCE.spawn.surgeFirst,
@@ -75,6 +77,8 @@ function update(dt, rdt) {
   updateEnemies(dt);
   updateWeapons(dt);
   updateGems(dt);
+  updateChests(dt);
+  if (S.state === 'chest') updateChestReveal(rdt);
   updateParts(dt);
   updateTexts(rdt);
   // combo decay runs on real time so slow-mo does not cheese it
@@ -127,6 +131,11 @@ function makeDebugHandle() {
     grantXP(n) { gainXP(n == null ? 10 : n); },
     pickCard(i) { pickCard(i); },
     forceBoss() { if (S.state === 'play') spawnBoss(); },
+    forceChest() { if (S.state === 'play') dropChest(S.player.x + 40, S.player.y); },
+    setWeapon(id, lv, evo) {
+      const w = S.weapons[id];
+      if (w) { w.lv = Math.max(0, Math.min(BALANCE.weapons.maxLv, lv)); w.evo = !!evo; }
+    },
     killBoss() { const b = S.game.boss; if (b && !b.dead) { b.spawnT = 0; damageEnemy(b, b.hp * 2 + 1e6); } },
     killPlayer() { if (S.state === 'play') { S.player.inv = 0; damagePlayer(1e9); } },
     spawn(n) {
@@ -142,6 +151,10 @@ function makeDebugHandle() {
     state() {
       return { state: S.state, time: S.game.time, kills: S.game.kills, level: S.game.level,
         hp: S.player.hp, enemies: S.enemies.length, seed: S.game.seed, lowFX: S.lowFX,
+        chests: S.chests.length,
+        weapons: { bolt: { lv: S.weapons.bolt.lv, evo: !!S.weapons.bolt.evo },
+          blade: { lv: S.weapons.blade.lv, evo: !!S.weapons.blade.evo },
+          nova: { lv: S.weapons.nova.lv, evo: !!S.weapons.nova.evo } },
         best: { ...S.save.data.best } };
     },
   };
@@ -170,7 +183,9 @@ function mount(root, options) {
       if (S.state === 'level') {
         const n = { Digit1: 0, Digit2: 1, Digit3: 2, Numpad1: 0, Numpad2: 1, Numpad3: 2 }[code];
         if (n !== undefined) pickCard(n);
+        return;
       }
+      if (S.state === 'chest') dismissChest();
     },
     onPrimaryTouch() {
       if (S.state === 'start') { startRun(); return true; }
@@ -179,6 +194,7 @@ function mount(root, options) {
   });
   ui.start.addEventListener('pointerdown', function () { initAudio(); if (S.state === 'start') startRun(); });
   ui.restart.addEventListener('click', function () { initAudio(); if (S.state === 'over' && S.game.overShown) startRun(); });
+  ui.chest.addEventListener('pointerdown', function () { dismissChest(); });
 
   if (typeof S.options.onRunEnd === 'function') {
     bus.on('run-ended', function (payload) { S.options.onRunEnd(payload); });
