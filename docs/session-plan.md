@@ -1,6 +1,6 @@
 # Session Plan — NEON VOID
 
-Companion to `prd.md`. Seven single-session increments, each self-contained enough for a fresh Claude Code session with no memory of previous ones. Do them in order; each builds on the last.
+Companion to `prd.md`. Eight single-session increments, each self-contained enough for a fresh Claude Code session with no memory of previous ones. Do them in order; each builds on the last.
 
 ## How to run any session
 
@@ -54,9 +54,14 @@ boot with zero console errors → start a run → drive movement → grant XP, r
 - Spawn curve: flatter first 60s, steeper after 180s; surge rings announced with a brief on-screen cue.
 - All numbers in `config.js` only.
 
+**Scope amendment (2026-07-03, owner decision after beta feedback):** player power stays uncapped by design — the late-game power fantasy is a feature. The level-100+ runaway (one-shotting everything, level-up modal every second) is fixed on the world side instead:
+- Enemy HP gains a compounding per-minute term after ~minute 8, so pressure eventually re-catches any exponential build and runs regain an ending.
+- XP curve steepened (`pow` 1.3 → 1.5) so late levels arrive every few seconds, not several per second.
+- Overflow level-up handling (the one behavior-shape change, logged per the discipline rule): when one pickup grants multiple levels, only the first opens the card modal — the rest auto-apply a random eligible upgrade with floating text; the modal also opens at most once per cooldown window (BALANCE knob). Reason: beta testers at level 200+ were locked in the modal every second and could no longer move.
+
 **OUT:** new systems, new content rows, visual work beyond the surge cue.
 
-**Acceptance:** roll-constraint + innate-scaling unit tests green; playtest confirms first 30s feels active and minute 4+ feels dangerous; smoke pass clean.
+**Acceptance:** roll-constraint + innate-scaling + compounding-HP unit tests green; playtest confirms first 30s feels active and minute 4+ feels dangerous; smoke pass clean.
 
 ---
 
@@ -73,6 +78,25 @@ boot with zero console errors → start a run → drive movement → grant XP, r
 **OUT:** paired-passive requirements (VS-style item pairings), multiple chest rarities.
 
 **Acceptance:** eligibility unit tests green (maxed → evolves; not maxed → fallback; already evolved → excluded); full-run playtest reaching one evolution; smoke pass extended with a force-chest step.
+
+---
+
+## Session 3.5 — Endgame threat: Titans + the Void Reaper
+
+*(Added 2026-07-03 after beta feedback: with player power uncapped by design, late-game enemies stop mattering and there is no climactic threat. Placed after Session 3 so both bosses can drop evolution chests.)*
+
+**Goal:** Restore danger and give god-builds a mountain to climb: recurring titan super-bosses plus one milestone ultimate boss.
+
+**IN scope**
+- **Titans:** every ~5 minutes after minute 5, a super-boss whose HP rides the Session 2 compounding enemy curve (so it tracks exponential builds), visually distinct (scaled-up silhouette + aura), a modified attack pattern (e.g. multi-dash), and a guaranteed chest drop.
+- **Void Reaper:** at a fixed milestone (~minute 15), a heavily telegraphed ultimate spawns — faster than the player, massive compounding HP, ends most runs. Finite HP, so an extreme build *can* kill it; doing so is the game's crowning moment (big reward burst + `reaperSlain` flag in the run-ended payload, feeding a Session 6 achievement).
+- Regular boss HP adopts the compounding late-game term here too, so the 60s boss cycle stays relevant.
+- Events: titan-spawned, titan-killed, reaper-spawned, reaper-killed.
+- All numbers in BALANCE; scheduling and HP scaling as pure testable functions.
+
+**OUT:** new regular enemy species, multiple reaper difficulty tiers, reaper-specific arenas.
+
+**Acceptance:** titan/reaper scheduling + HP-scaling unit tests green; playtest: a strong build at minute 10+ feels pressured again; reaper kill achievable with a debug-boosted build; smoke pass extended with force-titan and force-reaper steps.
 
 ---
 
@@ -113,7 +137,7 @@ boot with zero console errors → start a run → drive movement → grant XP, r
 
 **IN scope**
 - Reroll (1/run) and Banish (1/run, removes the card's upgrade from this run's pool) buttons on the level-up screen, 44px+ targets.
-- Achievement table (~10: kills lifetime/single-run, survival time, evolutions seen, bosses killed, combo peak, gold earned…) as event-bus subscriptions persisted in save (schema bump + migration + tests); toast on unlock; list visible from start screen.
+- Achievement table (~10: kills lifetime/single-run, survival time, evolutions seen, bosses killed, titans killed, Void Reaper slain, combo peak, gold earned…) as event-bus subscriptions persisted in save (schema bump + migration + tests); toast on unlock; list visible from start screen.
 - First unlock reward: second character (e.g. "Vanguard": starts with Blades Lv1, +20% move speed, −20% max HP) selectable on the start screen.
 - Events: achievement-unlocked, character-selected.
 

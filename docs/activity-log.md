@@ -2,6 +2,20 @@
 
 Newest entries at the top. One entry per working session: what shipped, deviations from plan, known issues, next step.
 
+## 2026-07-03 — Session 2: combat feel & pacing patch (+ scope amendment from beta feedback)
+
+- **Design decision (owner):** player power stays uncapped — the late-game exponential power fantasy is a feature. Beta testers reported that at level 100+ enemies stop mattering and at 200+ the level-up modal opens every second, freezing movement. Root cause analysis: uncapped Overcharge/Wisdom compound exponentially while enemy HP was only quadratic and `xpToNext` only ~L^1.3; one-shotting the spawn cap floods XP faster than levels cost. Fix chosen: make the world re-catch the player instead of capping the player, and never let level-ups block movement.
+- Combat feel (original scope): bolt base interval 0.85 → 0.45s, base damage 10 → 7 (+3/lv from +4/lv), interval floor 0.28 → 0.18. Innate per-player-level growth added: +2% attack speed, +1.5% damage per level, linear-from-base via `innateAspdMul`/`innateDmgMul` in `config.js` (deliberately never compounding), applied at the weapon runtime sites.
+- Upgrade rolls: `rollUpgrades(pool, rng)` in `content/upgrades.js` guarantees ≥1 offensive card (bolt/blade/nova/power/rapid) per 3-card offer, no duplicates, seeded shuffle; `buildCards` consumes it.
+- Spawn curve now piecewise in `spawnInterval`: gentle first minute (base 1.1, −0.06/min), normal slope after (−0.15/min), extra −0.10/min past minute 3; same 0.13s floor. Surge rings announce "SURGE INCOMING" via the existing announce banner.
+- Pacing amendment: `xp.pow` 1.3 → 1.5; enemy HP compounds ×1.3/min past minute 8 (`hpCompoundAfterMin`/`hpCompoundPerMin`), so pressure always re-catches exponential builds and runs regain an ending.
+- Overflow level-ups (the one behavior-shape change, logged per plan): only the first pending level opens the card modal and never twice within 4s of game time (`BALANCE.levelup.modalCooldown`); all other levels auto-apply a seeded random eligible upgrade with floating text (`autoPick` in `levelup.js`, `lvModalAt` on run state). Verified in-browser: a 200k XP flood jumped level 2 → 172 in one pickup with zero modals and the player still moving; the next modal opened legitimately after the cooldown with the offensive guarantee intact.
+- Session plan updated: Session 2 scope amendment recorded; new **Session 3.5 — Titans + Void Reaper** inserted after evolutions (recurring titan super-bosses ~5min riding the compounding curve + one near-unkillable milestone ultimate at ~minute 15, killable by god-builds, feeding a Session 6 achievement).
+- Tests: 37 passing (`node --test`) — new coverage for roll constraint (offensive guarantee, no duplicates, graceful small pools, capped-card exclusion), innate linearity, compounding HP math, spawn-curve shape; bolt pins and the seeded-roll determinism test updated for the new numbers/roller.
+- Smoke pass clean: boot zero console errors, level-up via card click and key 2, auto-pick within cooldown, boss telegraph + kill, forced death, game-over stats + NEW BEST + v2 persistence across reload, restart, 210-enemy stress at ~7.0ms frame average, no adaptive-quality thrash.
+- Known issues: during one automated check the game-over screen restarted without input — could not reproduce (stable across 3.5s of polling on retry); most likely a stray key event in the preview tab. Watch during Session 3's smoke pass.
+- Next step: **Session 3** — weapon evolutions + boss chests. See `docs/session-plan.md`.
+
 ## 2026-07-02 — Session 1: module split (pure refactor) + test scaffold
 
 - Split the ~1,250-line `index.html` into a thin HTML shell + native ES modules, zero behavior change: `src/main.js` (boot/state machine/loop/`NeonVoid` API), `src/config.js` (BALANCE table + pure scaling math), `src/engine/` (events, save, rng, audio, input, sprites, particles), `src/content/` (enemies, weapons, upgrades as data rows), `src/game/` (player, enemies, weapons, gems, levelup, hud, render).
